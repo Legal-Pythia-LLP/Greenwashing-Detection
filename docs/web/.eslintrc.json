@@ -1,0 +1,12 @@
+{
+  "extends": "next/core-web-vitals",
+  "overrides": [
+    {
+      "rules": {
+        "react-hooks/exhaustive-deps": "off",
+        "react/no-unescaped-entities": "off",
+        "react/no-children-prop": "off"
+      }
+    }
+  ]
+}

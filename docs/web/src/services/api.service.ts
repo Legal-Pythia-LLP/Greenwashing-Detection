@@ -1,8 +1,11 @@
 import axios from 'axios';
 
 // const api = axios.create({baseURL: 'https://api.hlt.prototypes.legalpythia.com'});
-const api = axios.create({baseURL: 'https://api.bma.demos.legalpythia.com'});
-// const api = axios.create({baseURL: 'http://127.0.0.1:8000'});
+//const api = axios.create({baseURL: 'https://api.bma.demos.legalpythia.com'});
+const api = axios.create({baseURL: 'http://127.0.0.1:8000'});
+// const api = axios.create({
+//   baseURL: process.env.NEXT_PUBLIC_API_URL,
+// });
 
 export class APIService {
   static async uploadFile(file: File, session_id: string) {

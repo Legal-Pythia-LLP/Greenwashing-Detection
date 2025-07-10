@@ -33,8 +33,8 @@ load_dotenv()
 AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
 AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
 # add ------------------
-AZURE_OPENAI_API_KEY_EMBED = os.getenv("AZURE_OPENAI_API_KEY_2")
-AZURE_OPENAI_ENDPOINT_EMBED = os.getenv("AZURE_OPENAI_ENDPOINT_2")
+AZURE_OPENAI_API_KEY_2 = os.getenv("AZURE_OPENAI_API_KEY_2")
+AZURE_OPENAI_ENDPOINT_2 = os.getenv("AZURE_OPENAI_ENDPOINT_2")
 # add ------------------
 LLAMA_CLOUD_API_KEY = os.getenv("LLAMA_CLOUD_API_KEY")
 
@@ -130,8 +130,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["POST"],
     allow_headers=["Content-Type", "Authorization"],
-    # docs_url=None,
-    # redoc_url=None,
+    docs_url=None,
+    redoc_url=None,
 )
 
 llm = AzureOpenAI(
@@ -144,10 +144,9 @@ llm = AzureOpenAI(
 
 embed_model = AzureOpenAIEmbedding(
     model=OpenAIEmbeddingModelType.TEXT_EMBED_3_LARGE,
-    # model="text-embedding-3-large",
     deployment_name="text-embedding-3-large",
-    api_key=AZURE_OPENAI_API_KEY_EMBED,
-    azure_endpoint=AZURE_OPENAI_ENDPOINT_EMBED,
+    api_key=AZURE_OPENAI_API_KEY_2,
+    azure_endpoint=AZURE_OPENAI_ENDPOINT_2,
     api_version="2023-05-15",
     embed_batch_size=100,
     num_workers=8,
@@ -246,19 +245,6 @@ async def extract_company_name(text: str):
     return response.response.strip()
 
 
-async def translate_to_english(text: str):
-    """
-    使用 LLM 将输入文本翻译成英文，只返回英文翻译结果。
-    """
-    translation_prompt = "Translate the following text to English. Only return the translated English text:\n" + text
-    # 这里直接用 extract_company_name 里的方式
-    doc = Document(text=text)
-    index = VectorStoreIndex.from_documents([doc])
-    query_engine = index.as_query_engine()
-    response = await query_engine.aquery(translation_prompt)
-    return response.response.strip()
-
-
 @app.post("/upload")
 async def upload(
     file: Annotated[UploadFile, File()], session_id: Annotated[str, Form()]
@@ -290,27 +276,6 @@ async def upload(
         f.write(file_b)
 
     documents = await llama_parser.aload_data(str(file_path))
-    # 翻译每个 doc.text
-    translated_texts = []
-    for doc in documents:
-        translated = await translate_to_english(doc.text)
-        translated_texts.append(translated)
-    # 如果你需要新的 Document 列表
-    translated_documents = [Document(text=t) for t in translated_texts]
-
-    md_output_path = BASE_PATH / f"{file_path.stem}_parsed.md"
-
-    with open(md_output_path, "w", encoding="utf-8") as md_file:
-        for i, doc in enumerate(translated_documents):
-            md_file.write(f"# Document {i+1}\n\n")
-            md_file.write(doc.text.strip())
-            md_file.write("\n\n---\n\n")  # 分隔線
-
-
-    for i, doc in enumerate(translated_documents):
-        print(f"\n--- Document {i+1} ---")
-        print(doc.text)
-
     first_pages_text = "\n\n".join(
         [doc.text for doc in documents[: min(3, len(documents))]]
     )
@@ -320,7 +285,7 @@ async def upload(
     recursive_index = document_indexes.get(session_id, None)
     if not recursive_index:
         nodes = await lang_chain_parser.aget_nodes_from_documents(
-            translated_documents, show_progress=True
+            documents, show_progress=True
         )
 
         # Filter ESG-related nodes using ClimateBERT
@@ -479,13 +444,12 @@ async def chat(json_data: ChatBaseMessage) -> dict[str, Any]:
     )
 
     # add ------------
-    # chat_response = await chat_engine.achat(user_message)
-    # return {"response": chat_response.response}
+    chat_response = await chat_engine.achat(user_message)
+    return {"response": chat_response.response}
     # add ------------
-
-    chat_response = await chat_engine.astream_chat(user_message)
-
-    return StreamingResponse(
-        content=chat_response.async_response_gen(),
-        media_type="text/event-stream",
-    )
+    # chat_response = await chat_engine.astream_chat(user_message)
+    #
+    # return StreamingResponse(
+    #     content=chat_response.async_response_gen(),
+    #     media_type="text/event-stream",
+    # )
