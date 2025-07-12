@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+pandas
+torch
+transformers
+langchain
+langchain-openai
+starlette
+llama-index
+llama-index-embeddings-azure-openai
+llama-index-llms-azure-openai
+python-multipart
