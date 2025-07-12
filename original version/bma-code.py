@@ -168,10 +168,10 @@ Settings.embed_model = embed_model
 # Using the pre-trained ClimateBERT model (without fine-tuning) for ESG classification
 climatebert_model_name = "climatebert/distilroberta-base-climate-f"
 climatebert_tokenizer = AutoTokenizer.from_pretrained(
-    climatebert_model_name, local_files_only=True
+    climatebert_model_name, local_files_only=False
 )
 climatebert_model = AutoModelForSequenceClassification.from_pretrained(
-    climatebert_model_name, local_files_only=True
+    climatebert_model_name, local_files_only=False
 )
 
 # chat_store = SimpleChatStore()
