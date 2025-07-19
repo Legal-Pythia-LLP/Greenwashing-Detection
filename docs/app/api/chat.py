@@ -1,25 +1,25 @@
 from fastapi import APIRouter, HTTPException
-from starlette.responses import StreamingResponse
+from fastapi.responses import StreamingResponse
 from app.models.pydantic_models import ChatBaseMessage
-from app.utils.language import detect_language
+from app.services.memory import get_document_store, get_agent_executor, set_agent_executor
 from app.services.agent import create_multilingual_esg_agent
-from app.services.memory import document_stores, agent_executors
+from app.utils.language import detect_language
 import asyncio
 
 router = APIRouter()
 
 @router.post("/chat")
-async def chat_with_agent_multilingual(json_data: ChatBaseMessage) -> StreamingResponse:
+async def chat_with_agent_multilingual(json_data: ChatBaseMessage, llm = None):
     user_message = json_data.message
     session_id = json_data.session_id
-    vector_store = document_stores.get(session_id)
+    vector_store = get_document_store(session_id)
     if not vector_store:
         raise HTTPException(status_code=400, detail="No analysis session found")
     message_language = detect_language(user_message)
-    agent = agent_executors.get(session_id)
+    agent = get_agent_executor(session_id)
     if not agent:
-        agent = create_multilingual_esg_agent(session_id, vector_store, message_language)
-        agent_executors[session_id] = agent
+        agent = create_multilingual_esg_agent(session_id, vector_store, message_language, llm)
+        set_agent_executor(session_id, agent)
     async def generate_response():
         try:
             contextualized_message = f"""
