@@ -1,11 +1,30 @@
-# 配置与常量
+import os
+from pathlib import Path
+from dotenv import load_dotenv
 
+# 加载环境变量
+load_dotenv()
+
+# 环境变量
+AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
+AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
+AZURE_OPENAI_API_KEY_2 = os.getenv("AZURE_OPENAI_API_KEY_2")
+AZURE_OPENAI_ENDPOINT_2 = os.getenv("AZURE_OPENAI_ENDPOINT_2")
+LLAMA_CLOUD_API_KEY = os.getenv("LLAMA_CLOUD_API_KEY")
+
+# 路径
+BASE_PATH = Path(__file__).parent.parent
+UPLOAD_DIR = BASE_PATH / "uploads"
+COMPANIES_PATH = BASE_PATH / "data_files/companies.csv"
+
+# 支持语言
 SUPPORTED_LANGUAGES = {
     'en': 'English',
     'de': 'German',
     'it': 'Italian'
 }
 
+# 绿洗关键词
 GREENWASHING_KEYWORDS = {
     'en': [
         'sustainable', 'green', 'eco-friendly', 'carbon neutral', 'clean energy',
@@ -27,6 +46,7 @@ GREENWASHING_KEYWORDS = {
     ]
 }
 
+# 多语言分析Prompt
 ANALYSIS_PROMPTS = {
     'en': {
         'company_extraction': "Extract the company name from this context. Return only the company name, nothing else.",

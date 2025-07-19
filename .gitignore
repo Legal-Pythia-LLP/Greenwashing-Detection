@@ -3,3 +3,7 @@
 /.idea/
 /docs/multilingual_esg_system_old.py
 /.gitignore
+__pycache__/
+   **/__pycache__/
+   *.pyc
+   *.pyo

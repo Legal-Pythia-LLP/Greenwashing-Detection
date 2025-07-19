@@ -3,26 +3,19 @@ from langdetect import detect
 from app.config import SUPPORTED_LANGUAGES, GREENWASHING_KEYWORDS
 
 def detect_language(text: str) -> str:
-    """检测文本语言 - 使用 deep-translator 的语言检测"""
+    """检测文本语言，优先用 langdetect，失败回退英文"""
     try:
-        from deep_translator import GoogleTranslator
-        detected = GoogleTranslator(source='auto', target='en').detect(text)
+        detected = detect(text)
         if detected in SUPPORTED_LANGUAGES:
             return detected
         else:
             return 'en'
     except Exception as e:
         logging.warning(f"Language detection error: {e}")
-        try:
-            detected = detect(text)
-            if detected in SUPPORTED_LANGUAGES:
-                return detected
-            else:
-                return 'en'
-        except:
-            return 'en'
+        return 'en'
 
 def is_greenwashing_keyword_present(text: str, language: str) -> bool:
+    """判断文本中是否包含绿洗关键词"""
     keywords = GREENWASHING_KEYWORDS.get(language, GREENWASHING_KEYWORDS['en'])
     text_lower = text.lower()
     return any(keyword in text_lower for keyword in keywords)
@@ -96,8 +89,6 @@ def extract_multilingual_entities(text: str, language: str) -> dict:
     return entities 
 
 def is_esg_related_multilingual(text: str, language: str, threshold: float = 0.5) -> bool:
-    """用多语言关键词判断文本是否与ESG相关。"""
-    if is_greenwashing_keyword_present(text, language):
-        return True
-    # 这里可扩展模型判断，当前仅用关键词
-    return False 
+    """判断文本是否与ESG相关，先关键词，后可扩展模型"""
+    # 这里只实现关键词判别，后续可在服务层扩展BERT模型
+    return is_greenwashing_keyword_present(text, language) 

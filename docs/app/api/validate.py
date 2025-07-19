@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Form, HTTPException
 from typing import Annotated
 from app.config import SUPPORTED_LANGUAGES
-from app.utils.language import analyze_language_specific_greenwashing, extract_multilingual_entities
-from app.services.memory import document_stores
+from app.services.esg_analysis import analyze_language_specific_greenwashing, extract_multilingual_entities
+from app.services.memory import get_document_store
 
 router = APIRouter()
 
@@ -20,7 +20,7 @@ async def validate_language_specific_claims(
     try:
         greenwashing_analysis = analyze_language_specific_greenwashing(text, language)
         entities = extract_multilingual_entities(text, language)
-        vector_store = document_stores.get(session_id)
+        vector_store = get_document_store(session_id)
         additional_context = ""
         if vector_store:
             related_docs = vector_store.similarity_search(text[:500], k=3)
