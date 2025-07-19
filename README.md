@@ -1,13 +1,7 @@
 # Summer-Project
-<<<<<<< Updated upstream
-Summer Project
-
-題目：
-=======
 
 ## 題目：
 
->>>>>>> Stashed changes
 Exciting news from Legal Pythia! Since you already know us, you'll be stoked to hear we're offering a super cool project: we're looking for awesome Computer Science students to help us supercharge our Explainable AI (XAI) chatbot that detects greenwashing in financial documents! 🤖🌿💰
 
 This project is all about making our AI even smarter. You'll dive into:
@@ -43,16 +37,10 @@ Explore the feasibility or a basic implementation of greenwashing detection in a
 
 ## Tasks:
 
-<<<<<<< Updated upstream
-Model Performance Tracking: Set up metrics and a testing framework to consistently evaluate and report on model improvements.
- 
-Chatbot Team
-=======
 ### UI Team (All)
 
 - **Design Explainability Visualizations**  
   Focus on intuitive ways to show why a claim is flagged (e.g., highlighting specific phrases, displaying confidence scores, simple bar charts for contributing factors).
->>>>>>> Stashed changes
 
 - **Chatbot User Interface (UI/UX)**  
   Design a seamless and user-friendly interface for the chatbot, ensuring natural conversation flow and clear presentation of its responses and explanations.
