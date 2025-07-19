@@ -1,56 +1,93 @@
 # Summer-Project
+<<<<<<< Updated upstream
 Summer Project
 
 題目：
+=======
+
+## 題目：
+
+>>>>>>> Stashed changes
 Exciting news from Legal Pythia! Since you already know us, you'll be stoked to hear we're offering a super cool project: we're looking for awesome Computer Science students to help us supercharge our Explainable AI (XAI) chatbot that detects greenwashing in financial documents! 🤖🌿💰
 
 This project is all about making our AI even smarter. You'll dive into:
 
-Improving how our AI explains itself: Making explanations clearer, more detailed, and maybe even visual!
-
-Refining detection: Helping our AI get better at spotting those really subtle greenwashing tricks.
-
-Building a slick user interface: Designing a web dashboard that makes our tech easy for financial pros to use.
-
-(Optional stretch goal) Exploring other languages: Seeing if our greenwashing detection can work in German!
+- Improving how our AI explains itself: Making explanations clearer, more detailed, and maybe even visual!
+- Refining detection: Helping our AI get better at spotting those really subtle greenwashing tricks.
+- Building a slick user interface: Designing a web dashboard that makes our tech easy for financial pros to use.
+- (Optional stretch goal) Exploring other languages: Seeing if our greenwashing detection can work in German!
 
 This is a fantastic chance to apply your AI and UX skills to a real-world problem with a huge impact on trust and transparency in the financial world. If you're keen to jump on board and help us make a difference, let me know!
 
-需求：
-Advanced Explainability Features: Develop more granular and interactive explanations. For example, can the chatbot not just say "this claim is vague," but highlight the exact vague phrases, suggest clearer alternatives, or cite counter-evidence from other parts of the document or external data? Could they build a simple visualization for the explanation?
+---
 
-Targeted Greenwashing Typologies: Research and implement detection for specific, subtle greenwashing tactics prevalent in financial disclosures (e.g., "green-wishing" - aspirational but unbacked claims, "cherry-picking" data, "hidden trade-offs"). This would require deeper NLP model fine-tuning.
+## 需求：
 
-Intuitive User Interface/Dashboard: Design and prototype an interactive web interface or dashboard where financial users (e.g., ESG analysts, compliance officers) can easily upload documents, receive risk scores, explore flagged claims with their XAI explanations, and generate summary reports.
+### Advanced Explainability Features
 
-Multilingual Pilot (if applicable): Explore the feasibility or a basic implementation of greenwashing detection in a specific non-English financial document language, showcasing the potential for broader market reach.
+Develop more granular and interactive explanations. For example, can the chatbot not just say "this claim is vague," but highlight the exact vague phrases, suggest clearer alternatives, or cite counter-evidence from other parts of the document or external data? Could they build a simple visualization for the explanation?
 
-===============================================================
-Tasks:
+### Targeted Greenwashing Typologies
 
-UI Team (All)
+Research and implement detection for specific, subtle greenwashing tactics prevalent in financial disclosures (e.g., "green-wishing" - aspirational but unbacked claims, "cherry-picking" data, "hidden trade-offs"). This would require deeper NLP model fine-tuning.
 
-Design Explainability Visualizations: Focus on intuitive ways to show why a claim is flagged (e.g., highlighting specific phrases, displaying confidence scores, simple bar charts for contributing factors).
+### Intuitive User Interface/Dashboard
 
-Chatbot User Interface (UI/UX): Design a seamless and user-friendly interface for the chatbot, ensuring natural conversation flow and clear presentation of its responses and explanations.
+Design and prototype an interactive web interface or dashboard where financial users (e.g., ESG analysts, compliance officers) can easily upload documents, receive risk scores, explore flagged claims with their XAI explanations, and generate summary reports.
 
-Overall Dashboard Refinement: Improve the general aesthetic and navigability of the main dashboard where analysis results are displayed.
-AI Model Performance Team
+### Multilingual Pilot (if applicable)
 
-Greenwashing Detection Model Refinement: Work on improving the core AI model's accuracy in identifying various types of greenwashing (e.g., vagueness, hidden trade-offs, irrelevant claims).
+Explore the feasibility or a basic implementation of greenwashing detection in a specific non-English financial document language, showcasing the potential for broader market reach.
 
-False Positive/Negative Reduction: Implement strategies to minimize misclassifications, ensuring the model is precise without being overly cautious or missing actual greenwashing.
+---
 
-Explanation Generation Logic: Collaborate closely with the Chatbot team to ensure the model can produce concise and accurate explanations that the chatbot can then convey. This is crucial for the "Explainable AI" aspect.
+## Tasks:
 
+<<<<<<< Updated upstream
 Model Performance Tracking: Set up metrics and a testing framework to consistently evaluate and report on model improvements.
  
 Chatbot Team
+=======
+### UI Team (All)
 
-Chatbot Integration with XAI Explanations: This is key! Focus on enabling the chatbot to effectively retrieve and present the explanations generated by the AI Model Performance team. The chatbot should translate complex AI rationales into understandable language for the user.
+- **Design Explainability Visualizations**  
+  Focus on intuitive ways to show why a claim is flagged (e.g., highlighting specific phrases, displaying confidence scores, simple bar charts for contributing factors).
+>>>>>>> Stashed changes
 
-User Query Interpretation: Enhance the chatbot's ability to understand user questions about greenwashing claims and provide relevant, AI-backed answers or direct them to specific explanations.
+- **Chatbot User Interface (UI/UX)**  
+  Design a seamless and user-friendly interface for the chatbot, ensuring natural conversation flow and clear presentation of its responses and explanations.
 
-Interactive Explanation Flow: Design how the chatbot guides a user through an explanation (e.g., "Would you like to know which words triggered this flag?" or "Here are the top three reasons this claim is suspicious.").
+- **Overall Dashboard Refinement**  
+  Improve the general aesthetic and navigability of the main dashboard where analysis results are displayed.
 
-Feedback Mechanism: Implement a way for users to give feedback on the chatbot's explanations, which can then inform future model improvements.
+---
+
+### AI Model Performance Team
+
+- **Greenwashing Detection Model Refinement**  
+  Work on improving the core AI model's accuracy in identifying various types of greenwashing (e.g., vagueness, hidden trade-offs, irrelevant claims).
+
+- **False Positive/Negative Reduction**  
+  Implement strategies to minimize misclassifications, ensuring the model is precise without being overly cautious or missing actual greenwashing.
+
+- **Explanation Generation Logic**  
+  Collaborate closely with the Chatbot team to ensure the model can produce concise and accurate explanations that the chatbot can then convey. This is crucial for the "Explainable AI" aspect.
+
+- **Model Performance Tracking**  
+  Set up metrics and a testing framework to consistently evaluate and report on model improvements.
+
+---
+
+### Chatbot Team
+
+- **Chatbot Integration with XAI Explanations**  
+  This is key! Focus on enabling the chatbot to effectively retrieve and present the explanations generated by the AI Model Performance team. The chatbot should translate complex AI rationales into understandable language for the user.
+
+- **User Query Interpretation**  
+  Enhance the chatbot's ability to understand user questions about greenwashing claims and provide relevant, AI-backed answers or direct them to specific explanations.
+
+- **Interactive Explanation Flow**  
+  Design how the chatbot guides a user through an explanation (e.g., "Would you like to know which words triggered this flag?" or "Here are the top three reasons this claim is suspicious.").
+
+- **Feedback Mechanism**  
+  Implement a way for users to give feedback on the chatbot's explanations, which can then inform future model improvements.
