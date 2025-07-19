@@ -1,10 +1,16 @@
+# 忽略虚拟环境和下载目录
 /docs/venv/
 /docs/downloads/
+
+# 忽略 IDE 配置
+.idea/
 /docs/.idea/
-/.idea/
-/docs/multilingual_esg_system_old.py
-/.gitignore
+
+# 忽略旧的 .py 文件（通配符更灵活）
+/docs/*_old.py
+
+# 忽略 Python 缓存
 __pycache__/
-   **/__pycache__/
-   *.pyc
-   *.pyo
+**/__pycache__/
+*.pyc
+*.pyo
