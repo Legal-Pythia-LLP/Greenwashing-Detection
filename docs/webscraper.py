@@ -229,6 +229,7 @@ def cnn_search(name: str) -> Dict[str, str]:
 
     while next_page:
         source = f"https://www.cnn.com/search?q={name}&size=10&page={page_count}"
+        # source = f"https://www.cnn.com/search?q={jpmorgan chase & co.}&size=10&page={1}"
 
         response = requests.get(source)
 

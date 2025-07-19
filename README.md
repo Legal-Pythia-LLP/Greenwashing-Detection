@@ -65,7 +65,6 @@ Explore the feasibility or a basic implementation of greenwashing detection in a
   Set up metrics and a testing framework to consistently evaluate and report on model improvements.
 
 ---
-
 ### Chatbot Team
 
 - **Chatbot Integration with XAI Explanations**  
