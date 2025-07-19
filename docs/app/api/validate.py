@@ -11,7 +11,7 @@ async def validate_language_specific_claims(
     text: Annotated[str, Form()],
     language: Annotated[str, Form()],
     session_id: Annotated[str, Form()]
-):
+) -> dict:
     if language not in SUPPORTED_LANGUAGES:
         raise HTTPException(
             status_code=400,

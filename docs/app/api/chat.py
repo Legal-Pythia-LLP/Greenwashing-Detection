@@ -9,7 +9,7 @@ import asyncio
 router = APIRouter()
 
 @router.post("/chat")
-async def chat_with_agent_multilingual(json_data: ChatBaseMessage, llm: any = None) -> StreamingResponse:
+async def chat_with_agent_multilingual(json_data: ChatBaseMessage, llm = None):
     user_message = json_data.message
     session_id = json_data.session_id
     vector_store = get_document_store(session_id)

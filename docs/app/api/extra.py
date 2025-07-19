@@ -6,7 +6,7 @@ from app.utils.translation import translate_text
 router = APIRouter()
 
 @router.get("/languages")
-async def get_supported_languages():
+async def get_supported_languages() -> dict:
     return {
         "supported_languages": SUPPORTED_LANGUAGES,
         "default_language": "en"
@@ -17,7 +17,7 @@ async def translate_analysis(
     text: Annotated[str, Form()],
     target_language: Annotated[str, Form()],
     source_language: Annotated[str, Form()] = "auto"
-):
+) -> dict:
     if target_language not in SUPPORTED_LANGUAGES:
         raise HTTPException(
             status_code=400,

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
-from typing import Annotated, Dict, Any
+from typing import Annotated
 from app.utils.hashing import hash_file
 from app.utils.pdf_processing import process_pdf_document_multilingual
 from app.config import UPLOAD_DIR, SUPPORTED_LANGUAGES
@@ -13,8 +13,8 @@ router = APIRouter()
 async def upload_document_multilingual(
     file: Annotated[UploadFile, File()],
     session_id: Annotated[str, Form()],
-    llm: Any = None  # 需在主入口依赖注入
-) -> Dict[str, Any]:
+    llm = None
+) -> dict:
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Invalid content type")
     file_b = await file.read()
@@ -26,15 +26,21 @@ async def upload_document_multilingual(
     try:
         chunks, detected_language = process_pdf_document_multilingual(str(file_path))
         from langchain_community.vectorstores import Chroma
-        from app.services.llm import embedding_model  # 需在主入口初始化
+        from app.services.llm import embedding_model, llm as global_llm
         vector_store = Chroma.from_documents(chunks, embedding_model)
         set_document_store(session_id, vector_store)
-        # 公司名抽取（可选，简化处理）
         company_name = "unknown"
-        # 综合分析
+        # 优先用全局llm
         analysis_results = comprehensive_esg_analysis_multilingual(
-            session_id, vector_store, company_name, detected_language, llm
+            session_id, vector_store, company_name, detected_language, llm or global_llm
         )
+        # 错误健壮性处理
+        required_keys = ["final_synthesis", "initial_analysis", "document_analysis", "news_validation", "metrics", "comprehensive_analysis"]
+        for key in required_keys:
+            if key not in analysis_results:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                raise HTTPException(status_code=500, detail=f"Processing error: {analysis_results.get('error', 'Unknown error')}")
         os.remove(file_path)
         return {
             "filename": file_path.name,
@@ -53,5 +59,6 @@ async def upload_document_multilingual(
             "supported_languages": SUPPORTED_LANGUAGES
         }
     except Exception as e:
-        os.remove(file_path)
+        if os.path.exists(file_path):
+            os.remove(file_path)
         raise HTTPException(status_code=500, detail=f"Processing error: {str(e)}") 
