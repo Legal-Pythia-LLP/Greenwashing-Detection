@@ -1,0 +1,5 @@
+/docs/venv/
+/docs/.idea/
+/.idea/
+/docs/multilingual_esg_system_old.py
+/.gitignore
