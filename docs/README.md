@@ -8,15 +8,16 @@
 ### 1.1 创建 Python 虚拟环境
 
 建议使用 Python 3.10+。
-
+>进入项目目录
 ```powershell
-# 进入项目目录
 cd docs
-
-# 创建虚拟环境
+```
+>创建虚拟环境
+```powershell
 python -m venv venv
-
-# 激活虚拟环境
+```
+>激活虚拟环境
+```powershell
 venv\Scripts\activate
 ```
 
