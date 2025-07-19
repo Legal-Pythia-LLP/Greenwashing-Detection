@@ -10,6 +10,11 @@ router = APIRouter()
 
 @router.post("/chat")
 async def chat_with_agent_multilingual(json_data: ChatBaseMessage, llm = None):
+    """
+    多语言 ESG 聊天接口。
+    根据 session_id 获取向量库和 Agent，自动检测用户消息语言，
+    如无 Agent 则自动创建，支持流式返回。
+    """
     user_message = json_data.message
     session_id = json_data.session_id
     vector_store = get_document_store(session_id)
@@ -21,6 +26,7 @@ async def chat_with_agent_multilingual(json_data: ChatBaseMessage, llm = None):
         agent = create_multilingual_esg_agent(session_id, vector_store, message_language, llm)
         set_agent_executor(session_id, agent)
     async def generate_response():
+        """流式生成 Agent 回复"""
         try:
             contextualized_message = f"""
             User language: {message_language}

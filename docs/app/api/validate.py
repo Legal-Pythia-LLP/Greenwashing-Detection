@@ -12,6 +12,10 @@ async def validate_language_specific_claims(
     language: Annotated[str, Form()],
     session_id: Annotated[str, Form()]
 ) -> dict:
+    """
+    语言特定绿洗分析与实体抽取接口。
+    支持多语言关键词分析、实体识别，并可返回相关上下文。
+    """
     if language not in SUPPORTED_LANGUAGES:
         raise HTTPException(
             status_code=400,

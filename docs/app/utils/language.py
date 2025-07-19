@@ -3,7 +3,9 @@ from langdetect import detect
 from app.config import SUPPORTED_LANGUAGES, GREENWASHING_KEYWORDS
 
 def detect_language(text: str) -> str:
-    """检测文本语言，优先用 langdetect，失败回退英文"""
+    """
+    检测文本语言，优先用 langdetect，失败回退英文。
+    """
     try:
         detected = detect(text)
         if detected in SUPPORTED_LANGUAGES:
@@ -15,12 +17,17 @@ def detect_language(text: str) -> str:
         return 'en'
 
 def is_greenwashing_keyword_present(text: str, language: str) -> bool:
-    """判断文本中是否包含绿洗关键词"""
+    """
+    判断文本中是否包含绿洗关键词。
+    """
     keywords = GREENWASHING_KEYWORDS.get(language, GREENWASHING_KEYWORDS['en'])
     text_lower = text.lower()
     return any(keyword in text_lower for keyword in keywords)
 
 def analyze_language_specific_greenwashing(text: str, language: str) -> dict:
+    """
+    语言特定绿洗分析，统计模糊词、无依据声明、误导前缀等出现次数。
+    """
     patterns = {
         'en': {
             'vague_terms': ['sustainable', 'eco-friendly', 'green', 'natural', 'clean'],
@@ -54,6 +61,9 @@ def analyze_language_specific_greenwashing(text: str, language: str) -> dict:
     }
 
 def extract_multilingual_entities(text: str, language: str) -> dict:
+    """
+    多语言实体抽取，返回组织、人名、地名、时间、金额等。
+    """
     import spacy
     entities = {
         'organizations': [],
@@ -89,6 +99,8 @@ def extract_multilingual_entities(text: str, language: str) -> dict:
     return entities 
 
 def is_esg_related_multilingual(text: str, language: str, threshold: float = 0.5) -> bool:
-    """判断文本是否与ESG相关，先关键词，后可扩展模型"""
+    """
+    判断文本是否与ESG相关，先关键词，后可扩展模型。
+    """
     # 这里只实现关键词判别，后续可在服务层扩展BERT模型
     return is_greenwashing_keyword_present(text, language) 

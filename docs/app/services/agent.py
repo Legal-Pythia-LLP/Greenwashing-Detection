@@ -11,9 +11,11 @@ from app.utils.language import detect_language, is_esg_related_multilingual
 from app.utils.translation import translate_text
 from typing import Any
 
+
 def create_multilingual_esg_agent(session_id: str, vector_store: Any, language: str, llm: Any) -> Any:
     """
     创建多语言ReAct Agent，集成ESG分析工具。
+    支持多语言文档分析、新闻验证、指标计算、ESG相关性判别、语言检测、翻译等。
     """
     tools = [
         MultilingualESGDocumentAnalysisTool(vector_store, language, llm),
@@ -38,11 +40,13 @@ def create_multilingual_esg_agent(session_id: str, vector_store: Any, language: 
             )
         )
     ]
+    # 对话历史内存
     memory = ConversationBufferWindowMemory(
         memory_key="chat_history",
         k=10,
         return_messages=True
     )
+    # 系统消息模板
     system_messages = {
         'en': "You are an expert ESG analyst specialized in identifying greenwashing. Respond in English.",
         'de': "Sie sind ein ESG-Experte, spezialisiert auf die Identifizierung von Greenwashing. Antworten Sie auf Deutsch.",
@@ -61,6 +65,7 @@ def create_multilingual_esg_agent(session_id: str, vector_store: Any, language: 
     Pay attention to language-specific greenwashing indicators and terminology.
     Current analysis language: {SUPPORTED_LANGUAGES[language]}
     """
+    # 初始化多语言Agent
     agent = initialize_agent(
         tools=tools,
         llm=llm,

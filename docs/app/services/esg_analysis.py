@@ -12,11 +12,11 @@ import logging
 from typing import Any, Dict, List, Optional
 from langgraph.graph import StateGraph, END
 
-# 你需要根据实际情况导入 llm、embedding_model
-# from app.services.llm import llm, embedding_model
-# 这里假设 llm 已经在主入口初始化并传入
-
+# 多语言ESG文档分析工具
 class MultilingualESGDocumentAnalysisTool(BaseTool):
+    """
+    用于多语言ESG文档分析，结合向量检索和大模型分析，识别绿洗迹象。
+    """
     name: str = "multilingual_esg_document_analysis"
     description: str = "Analyzes ESG documents for greenwashing indicators in multiple languages using vector search and semantic analysis"
     vector_store: Any = None
@@ -30,6 +30,7 @@ class MultilingualESGDocumentAnalysisTool(BaseTool):
         self.llm = llm
 
     def _run(self, query: str) -> str:
+        """执行多语言文档分析，返回分析结果文本"""
         try:
             docs = self.vector_store.similarity_search(query, k=10)
             context = "\n\n".join([doc.page_content for doc in docs])
@@ -44,7 +45,11 @@ class MultilingualESGDocumentAnalysisTool(BaseTool):
         except Exception as e:
             return f"Error in multilingual document analysis: {str(e)}"
 
+# 多语言新闻验证工具
 class MultilingualNewsValidationTool(BaseTool):
+    """
+    用于多语言新闻验证，对ESG声明进行新闻事实核查。
+    """
     name: str = "multilingual_news_validation"
     description: str = "Validates ESG claims against recent news articles from credible sources in multiple languages"
     company_name: str = ""
@@ -58,6 +63,7 @@ class MultilingualNewsValidationTool(BaseTool):
         self.llm = llm
 
     def _run(self, claims: str) -> str:
+        """执行新闻验证，返回验证结果文本"""
         try:
             bbc_articles = bbc_search(self.company_name)
             cnn_articles = cnn_search(self.company_name)
@@ -82,6 +88,7 @@ class MultilingualNewsValidationTool(BaseTool):
             return f"Error in multilingual news validation: {str(e)}"
 
     def _get_no_news_message(self) -> str:
+        """返回不同语言下的无新闻提示"""
         messages = {
             'en': "No recent news articles found for validation",
             'de': "Keine aktuellen Nachrichtenartikel zur Validierung gefunden",
@@ -90,6 +97,7 @@ class MultilingualNewsValidationTool(BaseTool):
         return messages.get(self.language, messages['en'])
 
     def _create_validation_prompt(self, claims: str, news_text: str) -> str:
+        """构建多语言新闻验证Prompt"""
         prompts = {
             'en': f"""
             Validate the following ESG claims against recent news articles:
@@ -124,7 +132,11 @@ class MultilingualNewsValidationTool(BaseTool):
         }
         return prompts.get(self.language, prompts['en'])
 
+# 多语言ESG指标计算工具
 class MultilingualESGMetricsCalculatorTool(BaseTool):
+    """
+    用于多语言ESG量化指标计算，便于可视化和评分。
+    """
     name: str = "multilingual_esg_metrics_calculator"
     description: str = "Calculates quantitative greenwashing metrics for visualization in multiple languages"
     language: str = 'en'
@@ -136,6 +148,7 @@ class MultilingualESGMetricsCalculatorTool(BaseTool):
         self.llm = llm
 
     def _run(self, analysis_text: str) -> str:
+        """执行指标计算，返回JSON格式评分"""
         try:
             metrics_template = ANALYSIS_PROMPTS.get(self.language, ANALYSIS_PROMPTS['en'])['metrics_calculation']
             metrics_prompt = metrics_template.format(analysis=analysis_text)
@@ -147,6 +160,9 @@ class MultilingualESGMetricsCalculatorTool(BaseTool):
             return f"Error calculating multilingual metrics: {str(e)}"
 
 def analyze_language_specific_greenwashing(text: str, language: str) -> Dict[str, Any]:
+    """
+    语言特定绿洗分析，统计模糊词、无依据声明、误导前缀等出现次数。
+    """
     patterns = {
         'en': {
             'vague_terms': ['sustainable', 'eco-friendly', 'green', 'natural', 'clean'],
@@ -180,6 +196,9 @@ def analyze_language_specific_greenwashing(text: str, language: str) -> Dict[str
     }
 
 def extract_multilingual_entities(text: str, language: str) -> Dict[str, List[str]]:
+    """
+    多语言实体抽取，返回组织、人名、地名、时间、金额等。
+    """
     import spacy
     entities = {
         'organizations': [],
@@ -218,7 +237,9 @@ def extract_multilingual_entities(text: str, language: str) -> Dict[str, List[st
     return entities
 
 def extract_company_info_multilingual(query: str, vector_store, language: str) -> str:
-    """从向量库中抽取公司名，支持多语言。"""
+    """
+    多语言公司名抽取，从向量库中检索并用大模型抽取公司名。
+    """
     try:
         docs = vector_store.similarity_search(query, k=5)
         context = "\n\n".join([doc.page_content for doc in docs])
@@ -232,6 +253,9 @@ def extract_company_info_multilingual(query: str, vector_store, language: str) -
         return "unknown"
 
 def comprehensive_esg_analysis_multilingual(session_id: str, vector_store: Chroma, company_name: str, language: str, llm: Any) -> Dict[str, Any]:
+    """
+    综合ESG分析主流程，串行调用文档分析、新闻验证、指标计算、最终汇总。
+    """
     try:
         analysis_tool = MultilingualESGDocumentAnalysisTool(vector_store, language, llm)
         news_tool = MultilingualNewsValidationTool(company_name, language, llm)
@@ -274,7 +298,7 @@ def comprehensive_esg_analysis_multilingual(session_id: str, vector_store: Chrom
         return {
             "error": f"Error in multilingual comprehensive analysis: {str(e)}",
             "detected_language": language
-        } 
+        }
 
 def generate_initial_thoughts_multilingual(state: ESGAnalysisState, llm=None) -> ESGAnalysisState:
     """
@@ -318,11 +342,12 @@ def generate_initial_thoughts_multilingual(state: ESGAnalysisState, llm=None) ->
         return state
     except Exception as e:
         state["error"] = f"Error generating multilingual thoughts: {str(e)}"
-        return state 
+        return state
 
 def langgraph_esg_workflow(llm, vector_store, company_name, language, max_iterations=5):
     """
     LangGraph多节点自动推理流程模板，参考multilingual_esg_system_old.py。
+    节点包括：思路生成、文档分析、新闻验证、指标计算、最终汇总。
     """
     def node_generate_thoughts(state):
         return generate_initial_thoughts_multilingual(state, llm=llm)

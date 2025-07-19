@@ -1,6 +1,9 @@
 from typing import TypedDict, Any, List, Optional, Dict
 
 class ESGAnalysisState(TypedDict):
+    """
+    ESG分析流程状态，支持多节点自动推理。
+    """
     company_name: str
     vector_store: Any
     detected_language: str

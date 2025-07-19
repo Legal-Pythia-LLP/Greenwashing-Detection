@@ -3,7 +3,7 @@ from langchain_openai import AzureChatOpenAI, AzureOpenAIEmbeddings
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.callbacks.manager import CallbackManager
 
-# LLM 实例
+# LLM 实例，负责多语言对话与分析
 llm = AzureChatOpenAI(
     azure_endpoint=AZURE_OPENAI_ENDPOINT,
     api_key=AZURE_OPENAI_API_KEY,
@@ -14,7 +14,7 @@ llm = AzureChatOpenAI(
     callback_manager=CallbackManager([StreamingStdOutCallbackHandler()])
 )
 
-# Embedding Model 实例
+# Embedding Model 实例，用于文档向量化
 embedding_model = AzureOpenAIEmbeddings(
     azure_endpoint=AZURE_OPENAI_ENDPOINT_2,
     api_key=AZURE_OPENAI_API_KEY_2,

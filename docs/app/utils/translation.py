@@ -3,7 +3,9 @@ from deep_translator import GoogleTranslator
 from app.config import SUPPORTED_LANGUAGES
 
 def translate_text(text: str, target_lang: str, source_lang: str = 'auto') -> str:
-    """使用 deep-translator 翻译文本"""
+    """
+    使用 deep-translator 翻译文本。
+    """
     try:
         if source_lang == target_lang:
             return text
@@ -14,7 +16,9 @@ def translate_text(text: str, target_lang: str, source_lang: str = 'auto') -> st
         return text
 
 def translate_texts_batch(texts: list, target_lang: str, source_lang: str = 'auto') -> list:
-    """批量翻译文本"""
+    """
+    批量翻译文本。
+    """
     try:
         translator = GoogleTranslator(source=source_lang, target=target_lang)
         results = []

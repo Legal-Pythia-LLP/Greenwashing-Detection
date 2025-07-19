@@ -5,10 +5,12 @@ from app.config import SUPPORTED_LANGUAGES
 from langchain.schema import Document
 from typing import List, Tuple
 
-# 分块器
+# 根据语言创建分块器
 
 def create_text_splitter(language: str) -> RecursiveCharacterTextSplitter:
-    """根据语言创建分块器"""
+    """
+    根据语言创建分块器，支持多语言分句。
+    """
     separators = {
         'en': ["\n\n", "\n", ".", "!", "?", ",", " ", ""],
         'de': ["\n\n", "\n", ".", "!", "?", ",", " ", ""],
@@ -22,7 +24,9 @@ def create_text_splitter(language: str) -> RecursiveCharacterTextSplitter:
     )
 
 def process_pdf_document_multilingual(file_path: str) -> Tuple[List[Document], str]:
-    """加载PDF，自动检测语言，筛选ESG相关内容并分块"""
+    """
+    加载PDF，自动检测语言，筛选ESG相关内容并分块。
+    """
     loader = PyPDFLoader(file_path)
     documents = loader.load()
     sample_text = " ".join([doc.page_content for doc in documents[:3]])

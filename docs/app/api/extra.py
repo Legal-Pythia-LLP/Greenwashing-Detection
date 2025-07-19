@@ -7,6 +7,9 @@ router = APIRouter()
 
 @router.get("/languages")
 async def get_supported_languages() -> dict:
+    """
+    获取支持的多语言列表。
+    """
     return {
         "supported_languages": SUPPORTED_LANGUAGES,
         "default_language": "en"
@@ -18,6 +21,9 @@ async def translate_analysis(
     target_language: Annotated[str, Form()],
     source_language: Annotated[str, Form()] = "auto"
 ) -> dict:
+    """
+    分析结果多语言翻译接口。
+    """
     if target_language not in SUPPORTED_LANGUAGES:
         raise HTTPException(
             status_code=400,

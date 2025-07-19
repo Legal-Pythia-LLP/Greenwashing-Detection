@@ -15,6 +15,13 @@ async def upload_document_multilingual(
     session_id: Annotated[str, Form()],
     llm = None
 ) -> dict:
+    """
+    PDF 上传与多语言 ESG 分析接口。
+    1. 校验并保存上传的 PDF 文件
+    2. 自动检测语言、分块、向量化
+    3. 自动抽取公司名
+    4. 调用综合分析主流程，返回分析结果
+    """
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Invalid content type")
     file_b = await file.read()
@@ -24,9 +31,11 @@ async def upload_document_multilingual(
     with open(file_path, "wb") as f:
         f.write(file_b)
     try:
+        # 处理PDF，自动检测语言并分块
         chunks, detected_language = process_pdf_document_multilingual(str(file_path))
         from langchain_community.vectorstores import Chroma
         from app.services.llm import embedding_model, llm as global_llm
+        # 构建向量库
         vector_store = Chroma.from_documents(chunks, embedding_model)
         set_document_store(session_id, vector_store)
         # 自动公司名识别
@@ -37,10 +46,11 @@ async def upload_document_multilingual(
         }
         company_query = company_query_templates.get(detected_language, company_query_templates['en'])
         company_name = extract_company_info_multilingual(company_query, vector_store, detected_language)
-        # 优先用全局llm
+        # 综合分析
         analysis_results = comprehensive_esg_analysis_multilingual(
             session_id, vector_store, company_name, detected_language, llm or global_llm
         )
+        # 检查分析结果完整性
         required_keys = ["final_synthesis", "initial_analysis", "document_analysis", "news_validation", "metrics", "comprehensive_analysis"]
         for key in required_keys:
             if key not in analysis_results:

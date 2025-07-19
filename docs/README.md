@@ -43,22 +43,32 @@ uvicorn app.main:app --reload
 
 ```
 docs/
-  ├── app/
-  │   ├── api/             # 路由层（如 chat.py, upload.py, validate.py）
-  │   ├── config.py        # 配置文件
-  │   ├── main.py          # FastAPI 启动入口
-  │   ├── models/          # 数据模型（如 pydantic_models.py, state.py）
-  │   ├── services/        # 业务逻辑层（如 agent.py, esg_analysis.py, memory.py）
-  │   └── utils/           # 工具函数（如 hashing.py, language.py, pdf_processing.py, translation.py）
-  ├── data_files/          # 数据文件（如 companies.csv）
-  ├── pdfs/                # PDF 文件
-  ├── uploads/             # 上传文件存放目录
-  ├── requirements.txt     # 依赖
-  └── README.md            # 项目说明
-
-# 根目录还有：
-original version/                        # 原始版本相关文件夹
+├── app/
+│   ├── api/             # 路由层（chat.py, upload.py, validate.py, extra.py）
+│   ├── config.py        # 配置（多语言、关键词、Prompt、环境变量等）
+│   ├── main.py          # FastAPI 启动入口
+│   ├── models/          # 数据模型（pydantic_models.py, state.py）
+│   ├── services/        # 业务逻辑（agent.py, esg_analysis.py, llm.py, memory.py）
+│   └── utils/           # 工具函数（hashing.py, language.py, pdf_processing.py, translation.py）
+├── data_files/          # 业务数据（如 companies.csv）
+├── pdfs/                # 示例/测试PDF文件
+├── uploads/             # 上传文件临时目录
+├── downloads/           # 新闻爬虫下载目录（如有）
+├── webscraper.py        # 新闻爬虫脚本
+├── requirements.txt     # 依赖包清单
+├── README.md            # 项目说明
+└── venv/                # Python虚拟环境（本地开发用）
 ```
+
+- **app/api/**：API端点
+- **app/services/**：核心业务逻辑与多语言分析
+- **app/models/**：Pydantic数据模型
+- **app/utils/**：通用工具函数
+- **config.py**：全局配置
+- **data_files/**、**pdfs/**、**uploads/**：数据与文件目录
+
+> 启动服务：`uvicorn app.main:app --reload`  
+> API文档：`/docs`
 
 ---
 
