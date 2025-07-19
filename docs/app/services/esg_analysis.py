@@ -10,6 +10,7 @@ from webscraper import bbc_search, cnn_search
 import json
 import logging
 from typing import Any, Dict, List, Optional
+from langgraph.graph import StateGraph, END
 
 # 你需要根据实际情况导入 llm、embedding_model
 # from app.services.llm import llm, embedding_model
@@ -216,6 +217,20 @@ def extract_multilingual_entities(text: str, language: str) -> Dict[str, List[st
             logging.warning(f"Entity extraction error for {language}: {e}")
     return entities
 
+def extract_company_info_multilingual(query: str, vector_store, language: str) -> str:
+    """从向量库中抽取公司名，支持多语言。"""
+    try:
+        docs = vector_store.similarity_search(query, k=5)
+        context = "\n\n".join([doc.page_content for doc in docs])
+        from app.services.llm import llm
+        from app.config import ANALYSIS_PROMPTS
+        extraction_template = ANALYSIS_PROMPTS.get(language, ANALYSIS_PROMPTS['en'])['company_extraction']
+        prompt = f"{extraction_template}\n\nContext: {context}\n\nQuery: {query}"
+        response = llm.invoke([HumanMessage(content=prompt)])
+        return response.content.strip()
+    except Exception as e:
+        return "unknown"
+
 def comprehensive_esg_analysis_multilingual(session_id: str, vector_store: Chroma, company_name: str, language: str, llm: Any) -> Dict[str, Any]:
     try:
         analysis_tool = MultilingualESGDocumentAnalysisTool(vector_store, language, llm)
@@ -260,3 +275,105 @@ def comprehensive_esg_analysis_multilingual(session_id: str, vector_store: Chrom
             "error": f"Error in multilingual comprehensive analysis: {str(e)}",
             "detected_language": language
         } 
+
+def generate_initial_thoughts_multilingual(state: ESGAnalysisState, llm=None) -> ESGAnalysisState:
+    """
+    多语言下为ESG分析生成4种不同分析思路（定量、定性、对比、时序），便于多角度分析。
+    """
+    language = state.get("detected_language", "en")
+    lang_name = SUPPORTED_LANGUAGES[language]
+    thought_generation_prompt = f"""
+    You are an expert ESG analyst tasked with identifying greenwashing in corporate reports.
+    Analyze this document in {lang_name} language and generate 4 different analytical approaches to examine this ESG document for greenwashing indicators.
+
+    Each approach should focus on a different aspect:
+    1. Quantitative analysis of specific metrics and targets
+    2. Qualitative analysis of language and claims
+    3. Comparative analysis against industry standards
+    4. Temporal analysis of commitments vs. achievements
+
+    For each approach, provide:
+    - A specific analytical question to investigate
+    - The methodology to use
+    - What evidence to look for
+    - Potential red flags to identify
+
+    Respond in {lang_name} language.
+    Format your response as a JSON list of 4 analytical approaches.
+    """
+    try:
+        from app.services.llm import llm as global_llm
+        use_llm = llm or global_llm
+        response = use_llm.invoke([HumanMessage(content=thought_generation_prompt)])
+        thoughts_text = response.content
+        import json
+        try:
+            thoughts = json.loads(thoughts_text)
+            if isinstance(thoughts, list):
+                state["initial_thoughts"] = thoughts
+            else:
+                state["initial_thoughts"] = thoughts_text.split('\n\n')
+        except json.JSONDecodeError:
+            state["initial_thoughts"] = thoughts_text.split('\n\n')
+        return state
+    except Exception as e:
+        state["error"] = f"Error generating multilingual thoughts: {str(e)}"
+        return state 
+
+def langgraph_esg_workflow(llm, vector_store, company_name, language, max_iterations=5):
+    """
+    LangGraph多节点自动推理流程模板，参考multilingual_esg_system_old.py。
+    """
+    def node_generate_thoughts(state):
+        return generate_initial_thoughts_multilingual(state, llm=llm)
+
+    def node_document_analysis(state):
+        tool = MultilingualESGDocumentAnalysisTool(vector_store, language, llm)
+        state["document_analysis"] = tool._run("Perform detailed ESG analysis")
+        return state
+
+    def node_news_validation(state):
+        tool = MultilingualNewsValidationTool(company_name, language, llm)
+        state["news_validation"] = tool._run(state.get("document_analysis", ""))
+        return state
+
+    def node_metrics_calculation(state):
+        tool = MultilingualESGMetricsCalculatorTool(language, llm)
+        state["metrics"] = tool._run(
+            f"Document Analysis: {state.get('document_analysis','')}\nNews Validation: {state.get('news_validation','')}"
+        )
+        return state
+
+    def node_final_synthesis(state):
+        synthesis_prompts = {
+            'en': "Create a comprehensive ESG greenwashing assessment report in English...",
+            'de': "Erstellen Sie einen umfassenden ESG-Greenwashing-Bewertungsbericht auf Deutsch...",
+            'it': "Crea un rapporto completo di valutazione del greenwashing ESG in italiano..."
+        }
+        prompt = synthesis_prompts.get(language, synthesis_prompts['en'])
+        state["final_synthesis"] = llm.invoke([HumanMessage(content=prompt)]).content
+        return state
+
+    workflow = StateGraph()
+    workflow.add_node("generate_thoughts", node_generate_thoughts)
+    workflow.add_node("document_analysis", node_document_analysis)
+    workflow.add_node("news_validation", node_news_validation)
+    workflow.add_node("metrics_calculation", node_metrics_calculation)
+    workflow.add_node("final_synthesis", node_final_synthesis)
+
+    workflow.add_edge("generate_thoughts", "document_analysis")
+    workflow.add_edge("document_analysis", "news_validation")
+    workflow.add_edge("news_validation", "metrics_calculation")
+    workflow.add_edge("metrics_calculation", "final_synthesis")
+    workflow.add_edge("final_synthesis", END)
+
+    initial_state = {
+        "company_name": company_name,
+        "vector_store": vector_store,
+        "detected_language": language,
+        "iteration": 0,
+        "max_iterations": max_iterations,
+    }
+
+    result_state = workflow.run("generate_thoughts", initial_state)
+    return result_state 

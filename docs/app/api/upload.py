@@ -4,7 +4,7 @@ from app.utils.hashing import hash_file
 from app.utils.pdf_processing import process_pdf_document_multilingual
 from app.config import UPLOAD_DIR, SUPPORTED_LANGUAGES
 from app.services.memory import set_document_store
-from app.services.esg_analysis import comprehensive_esg_analysis_multilingual
+from app.services.esg_analysis import comprehensive_esg_analysis_multilingual, extract_company_info_multilingual
 import os
 
 router = APIRouter()
@@ -29,12 +29,18 @@ async def upload_document_multilingual(
         from app.services.llm import embedding_model, llm as global_llm
         vector_store = Chroma.from_documents(chunks, embedding_model)
         set_document_store(session_id, vector_store)
-        company_name = "unknown"
+        # 自动公司名识别
+        company_query_templates = {
+            'en': "What is the name of the company that published this report?",
+            'de': "Wie heißt das Unternehmen, das diesen Bericht veröffentlicht hat?",
+            'it': "Qual è il nome dell'azienda che ha pubblicato questo rapporto?"
+        }
+        company_query = company_query_templates.get(detected_language, company_query_templates['en'])
+        company_name = extract_company_info_multilingual(company_query, vector_store, detected_language)
         # 优先用全局llm
         analysis_results = comprehensive_esg_analysis_multilingual(
             session_id, vector_store, company_name, detected_language, llm or global_llm
         )
-        # 错误健壮性处理
         required_keys = ["final_synthesis", "initial_analysis", "document_analysis", "news_validation", "metrics", "comprehensive_analysis"]
         for key in required_keys:
             if key not in analysis_results:
