@@ -2,10 +2,12 @@ from langchain.tools import BaseTool
 from langchain_community.vectorstores import Chroma
 from langchain_community.document_loaders import UnstructuredHTMLLoader
 from langchain.schema import HumanMessage
-from typing import Any
+from typing import Any, Optional, Dict, List
 from app.core.llm import llm
 from webscraper import bbc_search, cnn_search
 import json
+import requests
+from app.config import WIKIRATE_API_KEY
 
 class WikirateClient:
     """Wikirate API客户端，用于获取和验证ESG数据"""

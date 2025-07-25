@@ -1,5 +1,5 @@
 from typing import Dict, Any, List
-from app.core.tools import ESGDocumentAnalysisTool, NewsValidationTool, ESGMetricsCalculatorTool
+from app.core.tools import ESGDocumentAnalysisTool, NewsValidationTool, ESGMetricsCalculatorTool, WikirateValidationTool
 from app.core.llm import llm, climatebert_tokenizer, climatebert_model
 from app.config import VALID_COMPANIES
 from app.models import ESGAnalysisState
