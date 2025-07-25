@@ -59,6 +59,7 @@ async def upload_document(
             "initial_analysis": analysis_results["initial_analysis"],
             "document_analysis": analysis_results["document_analysis"],
             "news_validation": analysis_results["news_validation"],
+            "wikirate_validation": analysis_results["wikirate_validation"],  # 新增返回字段
             "graphdata": analysis_results["metrics"],
             "comprehensive_analysis": analysis_results["comprehensive_analysis"],
             "validation_complete": True,
