@@ -1,66 +1,29 @@
 import os
 from pathlib import Path
+import pandas as pd
 from dotenv import load_dotenv
 
-# 加载环境变量
+# 环境变量加载
 load_dotenv()
 
-# 环境变量配置（API Key、Endpoint等）
+# Environment variables
 AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
 AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
 AZURE_OPENAI_API_KEY_2 = os.getenv("AZURE_OPENAI_API_KEY_2")
 AZURE_OPENAI_ENDPOINT_2 = os.getenv("AZURE_OPENAI_ENDPOINT_2")
 LLAMA_CLOUD_API_KEY = os.getenv("LLAMA_CLOUD_API_KEY")
 
-# 路径配置
-BASE_PATH = Path(__file__).parent.parent
-UPLOAD_DIR = BASE_PATH / "uploads"           # 上传文件目录
-COMPANIES_PATH = BASE_PATH / "data_files/companies.csv"  # 公司名单文件
+# Paths
+BASE_PATH = Path(__file__).parent.parent  # 指向项目根目录
+UPLOAD_DIR = BASE_PATH / "uploads"   # 上传文件保存目录
+COMPANIES_PATH = BASE_PATH / "data_files/companies.csv"    # 公司白名单 CSV 文件路径
 
-# 支持的多语言
-SUPPORTED_LANGUAGES = {
-    'en': 'English',
-    'de': 'German',
-    'it': 'Italian'
-}
+# Load valid companies
+if COMPANIES_PATH.exists():
+    df = pd.read_csv(COMPANIES_PATH)
+    VALID_COMPANIES = [name.lower() for name in df["company_names"].to_list()]
+else:
+    VALID_COMPANIES = []
 
-# 绿洗关键词（多语言）
-GREENWASHING_KEYWORDS = {
-    'en': [
-        'sustainable', 'green', 'eco-friendly', 'carbon neutral', 'clean energy',
-        'renewable', 'environmentally responsible', 'climate-friendly', 'net-zero',
-        'carbon footprint', 'biodegradable', 'organic', 'natural', 'zero waste',
-        'climate action', 'sustainable development', 'environmental stewardship'
-    ],
-    'de': [
-        'nachhaltig', 'grün', 'umweltfreundlich', 'klimaneutral', 'saubere energie',
-        'erneuerbar', 'umweltverantwortlich', 'klimafreundlich', 'netto-null',
-        'co2-fußabdruck', 'biologisch abbaubar', 'organisch', 'natürlich', 'null abfall',
-        'klimaschutz', 'nachhaltige entwicklung', 'umweltschutz'
-    ],
-    'it': [
-        'sostenibile', 'verde', 'eco-compatibile', 'carbon neutral', 'energia pulita',
-        'rinnovabile', 'responsabile ambientale', 'climate-friendly', 'zero netto',
-        'impronta carbonica', 'biodegradabile', 'organico', 'naturale', 'zero rifiuti',
-        'azione climatica', 'sviluppo sostenibile', 'gestione ambientale'
-    ]
-}
-
-# 多语言分析Prompt模板
-ANALYSIS_PROMPTS = {
-    'en': {
-        'company_extraction': "Extract the company name from this context. Return only the company name, nothing else.",
-        'greenwashing_analysis': """Analyze the following ESG document content for greenwashing indicators:\n\nContent: {content}\n\nLook for:\n1. Vague or unsubstantiated claims\n2. Lack of specific metrics or targets\n3. Misleading terminology\n4. Cherry-picked data\n5. Absence of third-party verification\n\nProvide specific evidence and scoring rationale.""",
-        'metrics_calculation': """Based on the following ESG analysis, calculate specific greenwashing metrics:\n\nAnalysis: {analysis}\n\nCalculate scores (0-100) for each metric:\n1. Vague Language Score\n2. Evidence Quality Score\n3. Transparency Score\n4. Measurability Score\n5. Third-party Verification Score\n\nFormat as JSON with detailed evidence for each metric."""
-    },
-    'de': {
-        'company_extraction': "Extrahieren Sie den Firmennamen aus diesem Kontext. Geben Sie nur den Firmennamen zurück, nichts anderes.",
-        'greenwashing_analysis': """Analysieren Sie den folgenden ESG-Dokumentinhalt auf Greenwashing-Indikatoren:\n\nInhalt: {content}\n\nSuchen Sie nach:\n1. Vagen oder unbegründeten Behauptungen\n2. Fehlenden spezifischen Kennzahlen oder Zielen\n3. Irreführender Terminologie\n4. Selektiv ausgewählten Daten\n5. Fehlender Drittpartei-Verifizierung\n\nGeben Sie spezifische Belege und Bewertungslogik an.""",
-        'metrics_calculation': """Basierend auf der folgenden ESG-Analyse berechnen Sie spezifische Greenwashing-Kennzahlen:\n\nAnalyse: {analysis}\n\nBerechnen Sie Scores (0-100) für jede Kennzahl:\n1. Score für vage Sprache\n2. Score für Beweisqualität\n3. Transparenz-Score\n4. Messbarkeits-Score\n5. Drittpartei-Verifizierungs-Score\n\nFormatieren Sie als JSON mit detaillierten Belegen für jede Kennzahl."""
-    },
-    'it': {
-        'company_extraction': "Estrai il nome dell'azienda da questo contesto. Restituisci solo il nome dell'azienda, nient'altro.",
-        'greenwashing_analysis': """Analizza il seguente contenuto del documento ESG per indicatori di greenwashing:\n\nContenuto: {content}\n\nCerca:\n1. Affermazioni vaghe o non supportate\n2. Mancanza di metriche o obiettivi specifici\n3. Terminologia fuorviante\n4. Dati selezionati ad hoc\n5. Assenza di verifica da parte terza\n\nFornisci evidenze specifiche e razionale di valutazione.""",
-        'metrics_calculation': """Basato sulla seguente analisi ESG, calcola metriche specifiche di greenwashing:\n\nAnalisi: {analysis}\n\nCalcola punteggi (0-100) per ogni metrica:\n1. Punteggio Linguaggio Vago\n2. Punteggio Qualità delle Prove\n3. Punteggio Trasparenza\n4. Punteggio Misurabilità\n5. Punteggio Verifica Terze Parti\n\nFormatta come JSON con evidenze dettagliate per ogni metrica."""
-    }
-} 
+# 限制上传文件类型（只允许 PDF）
+VALID_UPLOAD_TYPES = ["application/pdf"] 

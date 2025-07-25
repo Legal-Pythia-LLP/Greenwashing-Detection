@@ -3,7 +3,6 @@ import re
 import shutil
 from datetime import datetime, timedelta
 from typing import Dict
-
 import requests
 from bs4 import BeautifulSoup
 
@@ -67,66 +66,6 @@ def date_conversion(date: str) -> datetime:
             return datetime(int(components[2]), month, int(components[0]))
 
 
-def bbc_search(name: str) -> Dict[str, str]:
-    """
-    BBC 新闻爬虫，搜索与 name 相关的新闻，下载并返回本地路径。
-    """
-    depth = 10
-    delta = 365 * 2
-    last_date = date_calculation(delta)
-    web_dictionary = {}
-    page_count = 1
-    next_page = True
-    limit = False
-    while next_page:
-        source = f"https://www.bbc.co.uk/search?q={name}&d=NEWS_PS&page={page_count}"
-        response = requests.get(source)
-        if page_count > 29:
-            break
-        response.encoding = "utf-8"
-        soup = BeautifulSoup(response.text, "html.parser")
-        promo_articles = soup.find_all("div", attrs={"data-testid": "default-promo"})
-        if not promo_articles:
-            break
-        for article in promo_articles:
-            title_struct = article.find("p")
-            if not title_struct:
-                continue  # Skips article if there is no title
-            title = title_struct.get_text(strip=True)
-            a_tag = article.find("a")
-            if not a_tag:
-                continue
-            link = a_tag.get("href")
-            if not link:
-                continue
-            container = article.find("ul")
-            if not container:
-                continue
-            article_date = container.find("span").text
-            if not article_date:
-                continue
-            try:
-                date = date_conversion(article_date)
-            except:
-                continue  # Skips the unnecessary part of the code
-            size = len(web_dictionary) + 1 <= depth
-            if url_validity(link) and size and date >= last_date:
-                web_dictionary[title] = link
-            elif not size:
-                limit = True
-                break
-        if limit:  # Checks if we have reached the 10 page limit, speeding up runtime
-            next_page = False
-        else:
-            page_count += 1
-    local_file_dict = {}
-    if len(web_dictionary) != 0:
-        local_file_dict = url_download(web_dictionary)
-        return local_file_dict
-    else:
-        return None
-
-
 def cnn_search(name: str) -> Dict[str, str]:
     """
     CNN 新闻爬虫，搜索与 name 相关的新闻，下载并返回本地路径。
@@ -187,4 +126,4 @@ def cnn_search(name: str) -> Dict[str, str]:
         local_file_dict = url_download(web_dictionary)
         return local_file_dict
     else:
-        return None
+        return None 

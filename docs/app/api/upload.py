@@ -1,68 +1,59 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
-from typing import Annotated
-from app.utils.hashing import hash_file
-from app.utils.pdf_processing import process_pdf_document_multilingual
-from app.config import UPLOAD_DIR, SUPPORTED_LANGUAGES
-from app.services.memory import set_document_store
-from app.services.esg_analysis import comprehensive_esg_analysis_multilingual, extract_company_info_multilingual
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from typing import Annotated, Dict, Any
+from app.core.utils import hash_file
+from app.core.document import process_pdf_document
+from app.core.vector_store import embedding_model
+from app.config import UPLOAD_DIR, VALID_UPLOAD_TYPES, VALID_COMPANIES
+from app.core.llm import llm
+from app.core.company import extract_company_info
+from app.models import ChatBaseMessage
+from app.core.esg_analysis import comprehensive_esg_analysis, document_stores
+from langchain.schema import HumanMessage
 import os
 
 router = APIRouter()
 
 @router.post("/upload")
-async def upload_document_multilingual(
-    file: Annotated[UploadFile, File()],
-    session_id: Annotated[str, Form()],
-    llm = None
-) -> dict:
-    """
-    PDF 上传与多语言 ESG 分析接口。
-    1. 校验并保存上传的 PDF 文件
-    2. 自动检测语言、分块、向量化
-    3. 自动抽取公司名
-    4. 调用综合分析主流程，返回分析结果
-    """
-    if file.content_type != "application/pdf":
+async def upload_document(
+    file: Annotated[UploadFile, File()], 
+    session_id: Annotated[str, Form()]
+) -> Dict[str, Any]:
+    """Upload and analyze ESG document with comprehensive analysis using LangGraph"""
+    if file.content_type not in VALID_UPLOAD_TYPES:
         raise HTTPException(status_code=400, detail="Invalid content type")
+    # Save file
     file_b = await file.read()
     file_hash = hash_file(file_b)
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     file_path = UPLOAD_DIR / f"{file_hash}.pdf"
-    with open(file_path, "wb") as f:
+    with file_path.open("wb") as f:
         f.write(file_b)
     try:
-        # 处理PDF，自动检测语言并分块
-        chunks, detected_language = process_pdf_document_multilingual(str(file_path))
+        # Process document
+        chunks = await process_pdf_document(str(file_path))
+        # Create vector store
         from langchain_community.vectorstores import Chroma
-        from app.services.llm import embedding_model, llm as global_llm
-        # 构建向量库
         vector_store = Chroma.from_documents(chunks, embedding_model)
-        set_document_store(session_id, vector_store)
-        # 自动公司名识别
-        company_query_templates = {
-            'en': "What is the name of the company that published this report?",
-            'de': "Wie heißt das Unternehmen, das diesen Bericht veröffentlicht hat?",
-            'it': "Qual è il nome dell'azienda che ha pubblicato questo rapporto?"
-        }
-        company_query = company_query_templates.get(detected_language, company_query_templates['en'])
-        company_name = extract_company_info_multilingual(company_query, vector_store, detected_language)
-        # 综合分析
-        analysis_results = comprehensive_esg_analysis_multilingual(
-            session_id, vector_store, company_name, detected_language, llm or global_llm
-        )
-        # 检查分析结果完整性
-        required_keys = ["final_synthesis", "initial_analysis", "document_analysis", "news_validation", "metrics", "comprehensive_analysis"]
-        for key in required_keys:
-            if key not in analysis_results:
-                if os.path.exists(file_path):
-                    os.remove(file_path)
-                raise HTTPException(status_code=500, detail=f"Processing error: {analysis_results.get('error', 'Unknown error')}")
-        os.remove(file_path)
+        document_stores[session_id] = vector_store
+        # Extract company name
+        company_query = "What is the name of the company that published this report?"
+        company_docs = vector_store.similarity_search(company_query, k=3)
+        company_context = "\n".join([doc.page_content for doc in company_docs])
+        company_prompt = f"""
+        Extract the company name from this context:
+        {company_context}
+        
+        Return only the company name, nothing else.
+        """
+        company_response = llm.invoke([HumanMessage(content=company_prompt)])
+        company_name = company_response.content.strip()
+        # Execute comprehensive analysis using LangGraph
+        analysis_results = await comprehensive_esg_analysis(session_id, vector_store, company_name)
+        # Clean up
+        file_path.unlink(missing_ok=True)
         return {
             "filename": file_path.name,
             "company_name": company_name,
-            "detected_language": detected_language,
-            "language_name": SUPPORTED_LANGUAGES[detected_language],
             "session_id": session_id,
             "response": analysis_results["final_synthesis"],
             "initial_analysis": analysis_results["initial_analysis"],
@@ -71,10 +62,9 @@ async def upload_document_multilingual(
             "graphdata": analysis_results["metrics"],
             "comprehensive_analysis": analysis_results["comprehensive_analysis"],
             "validation_complete": True,
-            "workflow_error": analysis_results.get("error"),
-            "supported_languages": SUPPORTED_LANGUAGES
+            "filenames": ["bbc_articles", "cnn_articles"] if company_name.lower() in VALID_COMPANIES else None,
+            "workflow_error": analysis_results.get("error")
         }
     except Exception as e:
-        if os.path.exists(file_path):
-            os.remove(file_path)
+        file_path.unlink(missing_ok=True)
         raise HTTPException(status_code=500, detail=f"Processing error: {str(e)}") 
