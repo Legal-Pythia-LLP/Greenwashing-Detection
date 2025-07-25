@@ -7,7 +7,7 @@ from app.core.tools import WikirateClient
 router = APIRouter()
 
 # 新增：Wikirate API测试端点
-@router.post("/test-wikirate")
+@router.post("/testwikirate")
 async def test_wikirate_connection(company_name: str) -> Dict[str, Any]:
     """Test Wikirate API connection and data retrieval"""
     
