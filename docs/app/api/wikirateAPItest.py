@@ -8,9 +8,8 @@ router = APIRouter()
 
 # 新增：Wikirate API测试端点
 @router.post("/testwikirate")
-async def test_wikirate_connection(company_name: str) -> Dict[str, Any]:
+async def test_wikirate_connection(company_name: str = Form(...)) -> Dict[str, Any]:
     """Test Wikirate API connection and data retrieval"""
-    
     if not WIKIRATE_API_KEY:
         return {
             "status": "error",

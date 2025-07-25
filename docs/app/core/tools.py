@@ -7,6 +7,7 @@ from app.core.llm import llm
 from webscraper import bbc_search, cnn_search
 import json
 import requests
+import cloudscraper
 from app.config import WIKIRATE_API_KEY
 
 class WikirateClient:
@@ -15,11 +16,16 @@ class WikirateClient:
     def __init__(self, api_key: Optional[str] = None):
         self.base_url = "https://wikirate.org"
         self.api_key = api_key
-        self.session = requests.Session()
+        self.session = cloudscraper.create_scraper(  # ✅ 替代 requests
+            browser={
+                'browser': 'chrome',
+                'platform': 'windows',
+                'mobile': False
+            }
+        )
 
-        # 设置请求头
+        # Cloudscraper 預設會附帶真實瀏覽器 UA
         self.session.headers.update({
-            'User-Agent': 'ESG-Analysis-System/1.0',
             'Accept': 'application/json'
         })
 
@@ -29,36 +35,55 @@ class WikirateClient:
             })
 
     def search_company(self, company_name: str) -> Dict[str, Any]:
-        """搜索公司信息"""
+        """搜尋公司資訊，支援精準名稱與模糊搜尋"""
         try:
-            # 清理公司名称，移除特殊字符
-            clean_name = company_name.replace(" ", "_").replace(".", "").replace(",", "")
+            original_name = company_name.strip()
+            clean_name = original_name.strip().replace(" ", "_")
+            direct_url = f"{self.base_url}/{clean_name}.json"
 
-            # 尝试直接访问公司页面
-            url = f"{self.base_url}/{clean_name}.json"
-            response = self.session.get(url, timeout=10)
+            # print(f"[Wikirate] 嘗試精準搜尋：{direct_url}")
+            response = self.session.get(direct_url, timeout=10)
+
+            # print(f"[DEBUG] Status Code: {response.status_code}")
+            # print(f"[DEBUG] Response preview:\n{response.text[:300]}")
 
             if response.status_code == 200:
-                return response.json()
+                data = response.json()
+                # print(f"[Wikirate] 精準找到公司: {data.get('name')}")
 
-            # 如果直接访问失败，尝试搜索
+                return {
+                    "name": data.get("name"),
+                    "url": data.get("url"),
+                    "type": data.get("type", {}).get("name"),
+                    "headquarters": data.get("headquarters", {}).get("content", [None])[0],
+                    "website": data.get("website", {}).get("content"),
+                    "aliases": data.get("alias", {}).get("content", []),
+                    "image_url": data.get("image", {}).get("content")
+                }
+
+            # 若精準搜尋失敗，改用 search API 做模糊搜尋
+            # print(f"[Wikirate] 精準搜尋失敗，改用模糊搜尋: '{original_name}'")
             search_url = f"{self.base_url}/search.json"
             params = {
-                'q': company_name,
+                'q': original_name,
                 'type': 'Company'
             }
 
             response = self.session.get(search_url, params=params, timeout=10)
             if response.status_code == 200:
-                search_results = response.json()
-                if search_results.get('items'):
-                    return search_results['items'][0]
+                results = response.json().get("items", [])
+                for item in results:
+                    if item.get("type") == "Company":
+                        # print(f"[Wikirate] 模糊搜尋找到公司: {item.get('name')}")
+                        return item
 
+            # print(f"[Wikirate] 公司 '{company_name}' 未在 Wikirate 找到")
             return {}
 
         except Exception as e:
-            print(f"Error searching company {company_name}: {e}")
+            # print(f"[Wikirate] 搜尋時發生錯誤: {e}")
             return {}
+
 
     def get_company_metrics(self, company_name: str, metrics: List[str] = None) -> Dict[str, Any]:
         """获取公司的ESG指标数据"""
