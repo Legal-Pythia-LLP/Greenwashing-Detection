@@ -9,6 +9,12 @@ class ESGAnalysisResult(BaseModel):
     evidence: List[str]
     metrics: Dict[str, Any]
 
+class WikirateValidationResult(BaseModel):
+    company_found: bool
+    metrics_verified: Dict[str, Any]
+    discrepancies: List[str]
+    verification_score: float
+
 # LangGraph State Definition
 class ESGAnalysisState(TypedDict):
     company_name: str
@@ -17,6 +23,7 @@ class ESGAnalysisState(TypedDict):
     selected_thoughts: List[str]
     document_analysis: str
     news_validation: str
+    wikirate_validation: str  # 新增Wikirate验证结果
     metrics: str
     final_synthesis: str
     iteration: int

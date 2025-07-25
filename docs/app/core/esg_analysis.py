@@ -18,6 +18,7 @@ document_stores: Dict[str, Chroma] = {}
 agent_executors: Dict[str, AgentExecutor] = {}
 memories: Dict[str, ConversationBufferWindowMemory] = {}
 
+
 # LangGraph Node Functions
 def generate_initial_thoughts(state: ESGAnalysisState) -> ESGAnalysisState:
     """Generate multiple analytical thoughts for ESG analysis"""
@@ -182,6 +183,53 @@ def validate_with_news(state: ESGAnalysisState) -> ESGAnalysisState:
         state["error"] = f"Error in news validation: {str(e)}"
         return state
 
+
+def validate_with_wikirate(state: ESGAnalysisState) -> ESGAnalysisState:
+    """新增：使用Wikirate数据库验证ESG指标"""
+
+    if state.get("error"):
+        return state
+
+    company_name = state.get("company_name", "")
+    document_analysis = state.get("document_analysis", "")
+
+    if not company_name:
+        state["wikirate_validation"] = "No company name provided for Wikirate validation."
+        return state
+
+    try:
+        wikirate_tool = WikirateValidationTool(company_name)
+
+        # 提取文档中的ESG指标
+        metrics_extraction_prompt = f"""
+        Extract specific numerical ESG metrics and values from the following analysis:
+
+        Analysis: {document_analysis}
+
+        Focus on extracting:
+        - Scope 1, 2, 3 emissions (in tonnes CO2e)
+        - Energy consumption data
+        - Water usage metrics
+        - Waste generation figures
+        - Any other quantifiable ESG metrics
+
+        Include the reported values, units, and time periods.
+        """
+
+        metrics_response = llm.invoke([HumanMessage(content=metrics_extraction_prompt)])
+        extracted_metrics = metrics_response.content
+
+        # 使用Wikirate验证
+        validation_result = wikirate_tool._run(extracted_metrics)
+        state["wikirate_validation"] = validation_result
+
+        return state
+
+    except Exception as e:
+        state["error"] = f"Error in Wikirate validation: {str(e)}"
+        return state
+
+
 def calculate_metrics(state: ESGAnalysisState) -> ESGAnalysisState:
     """Calculate quantitative greenwashing metrics"""
     
@@ -281,6 +329,7 @@ def create_esg_analysis_graph():
     workflow.add_node("evaluate_thoughts", evaluate_and_select_thoughts)
     workflow.add_node("document_analysis", perform_document_analysis)
     workflow.add_node("news_validation", validate_with_news)
+    workflow.add_node("wikirate_validation", validate_with_wikirate)  # 新增节点
     workflow.add_node("calculate_metrics", calculate_metrics)
     workflow.add_node("final_synthesis", synthesize_final_report)
     
@@ -288,7 +337,8 @@ def create_esg_analysis_graph():
     workflow.add_edge("generate_thoughts", "evaluate_thoughts")
     workflow.add_edge("evaluate_thoughts", "document_analysis")
     workflow.add_edge("document_analysis", "news_validation")
-    workflow.add_edge("news_validation", "calculate_metrics")
+    workflow.add_edge("news_validation", "wikirate_validation")  # 新增边
+    workflow.add_edge("wikirate_validation", "calculate_metrics")
     workflow.add_edge("calculate_metrics", "final_synthesis")
     
     # Set entry point
@@ -318,6 +368,7 @@ def create_esg_agent(session_id: str, vector_store: Chroma, company_name: str) -
     tools = [
         ESGDocumentAnalysisTool(vector_store),
         NewsValidationTool(company_name),
+        WikirateValidationTool(company_name),
         ESGMetricsCalculatorTool(),
         Tool(
             name="company_info_extractor",
@@ -378,6 +429,7 @@ async def comprehensive_esg_analysis(session_id: str, vector_store: Chroma, comp
         selected_thoughts=[],
         document_analysis="",
         news_validation="",
+        wikirate_validation="",
         metrics="",
         final_synthesis="",
         iteration=0,
@@ -395,6 +447,7 @@ async def comprehensive_esg_analysis(session_id: str, vector_store: Chroma, comp
             "initial_analysis": "\n".join(result.get("initial_thoughts", [])),
             "document_analysis": result.get("document_analysis", ""),
             "news_validation": result.get("news_validation", ""),
+            "wikirate_validation": result.get("wikirate_validation", ""),  # 新增返回字段
             "metrics": result.get("metrics", ""),
             "final_synthesis": result.get("final_synthesis", ""),
             "comprehensive_analysis": f"""
@@ -433,6 +486,14 @@ async def fallback_agent_analysis(session_id: str, vector_store: Chroma, company
         )
     else:
         news_validation = "Company name not recognized. News validation skipped."
+
+        # 新增Wikirate验证
+        wikirate_validation = agent.run(
+            f"Use the Wikirate database to verify ESG metrics and claims for {company_name}. "
+            f"Compare document data with verified Wikirate database entries."
+        )
+
+
     
     metrics_calculation = agent.run(
         f"Calculate detailed greenwashing metrics based on the analysis: "
@@ -449,6 +510,7 @@ async def fallback_agent_analysis(session_id: str, vector_store: Chroma, company
         "initial_analysis": "Fallback analysis due to workflow error",
         "document_analysis": document_analysis,
         "news_validation": news_validation,
+        "wikirate_validation": wikirate_validation,  # 新增返回字段
         "metrics": metrics_calculation,
         "final_synthesis": final_synthesis,
         "comprehensive_analysis": f"""
