@@ -106,9 +106,9 @@ class WikirateClient:
             
             # 分页获取所有答案
             all_answers = []
-            limit = 5
+            limit = 10
             offset = 0
-            max_total = 10  # 最多获取200条记录
+            max_total = 20  # 最多获取200条记录
             
             while len(all_answers) < max_total:
                 batch = api.get_answers(company=company.name, limit=min(limit, max_total - len(all_answers)), offset=offset)
@@ -124,11 +124,12 @@ class WikirateClient:
             esg_metrics = set()
             metric_cache = {}
             
-            # 获取所有指标的ESG主题
+            # 获取所有指标的ESG主题和单位信息
             for answer in all_answers:
                 metric_name = answer.metric
                 if metric_name in metric_cache:
-                    topics = metric_cache[metric_name]
+                    topics = metric_cache[metric_name]['topics']
+                    unit = metric_cache[metric_name]['unit']
                 else:
                     try:
                         metric_obj = api.get_metric(metric_name)
@@ -139,11 +140,22 @@ class WikirateClient:
                                 topics.append(t.lower())
                             elif isinstance(t, dict) and 'name' in t:
                                 topics.append(t['name'].lower())
-                        metric_cache[metric_name] = topics
+                        
+                        # 获取单位信息
+                        unit = getattr(metric_obj, 'unit', None)
+                        
+                        metric_cache[metric_name] = {
+                            'topics': topics,
+                            'unit': unit
+                        }
                     except Exception as e:
-                        print(f"获取指标 {metric_name} 主题失败: {e}")
+                        print(f"获取指标 {metric_name} 信息失败: {e}")
                         topics = []
-                        metric_cache[metric_name] = topics
+                        unit = None
+                        metric_cache[metric_name] = {
+                            'topics': topics,
+                            'unit': unit
+                        }
                 
                 if any(topic in topics for topic in esg_topics):
                     esg_metrics.add(metric_name)
@@ -163,9 +175,10 @@ class WikirateClient:
                         "metric_name": answer.metric,
                         "year": getattr(answer, 'year', None),
                         "value": getattr(answer, 'value', None),
-                        "comments": getattr(answer, 'comments', None),
-                        "source": getattr(answer, 'source', None),
-                        "topics": metric_cache.get(answer.metric, [])
+                        "unit": metric_cache.get(answer.metric, {}).get('unit'),
+                        # "comments": getattr(answer, 'comments', None),
+                        # "source": getattr(answer, 'source', None),
+                        # "topics": metric_cache.get(answer.metric, {}).get('topics', [])
                     }
                     results["esg_data"].append(record)
             

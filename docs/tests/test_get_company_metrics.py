@@ -45,12 +45,7 @@ def test_get_company_metrics():
                     print(f"  {i}. 指标: {record.get('metric_name')}")
                     print(f"     年份: {record.get('year')}")
                     print(f"     数值: {record.get('value')}")
-                    print(f"     主题: {record.get('topics')}")
-                    comments = record.get('comments')
-                    if comments:
-                        print(f"     备注: {comments[:100]}...")
-                    else:
-                        print(f"     备注: 无")
+                    print(f"     单位: {record.get('unit', '无')}")
                     print()
             else:
                 print("⚠️  没有找到ESG相关数据")
@@ -93,22 +88,15 @@ def test_single_company():
         print(f"📊 总答案数: {results.get('total_answers')}")
         print(f"🌱 ESG指标数: {results.get('esg_metrics_count')}")
         
-        # 按主题分类显示
-        esg_data = results.get('esg_data', [])
-        topics_count = {}
-        for record in esg_data:
-            topics = record.get('topics', [])
-            for topic in topics:
-                topics_count[topic] = topics_count.get(topic, 0) + 1
-        
-        print(f"\n📈 主题分布:")
-        for topic, count in topics_count.items():
-            print(f"  {topic}: {count}条")
-        
         # 显示所有ESG数据
+        esg_data = results.get('esg_data', [])
         print(f"\n📋 所有ESG数据:")
         for i, record in enumerate(esg_data, 1):
-            print(f"{i:2d}. {record.get('metric_name')} ({record.get('year')}) = {record.get('value')}")
+            metric_name = record.get('metric_name', '')
+            year = record.get('year', '')
+            value = record.get('value', '')
+            unit = record.get('unit', '')
+            print(f"{i:2d}. {metric_name} ({year}) = {value} {unit}")
     else:
         print(f"❌ 错误: {results['error']}")
 
@@ -119,6 +107,6 @@ if __name__ == "__main__":
     all_results = test_get_company_metrics()
     
     # 运行详细测试
-    test_single_company()
+    # test_single_company()
     
     print("\n测试完成!") 
