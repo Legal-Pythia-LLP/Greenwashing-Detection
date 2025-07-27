@@ -6,6 +6,8 @@ from typing import Any
 from app.core.llm import llm
 from webscraper import bbc_search, cnn_search
 import json
+from typing import Optional, Dict, Any, List
+
 
 class WikirateClient:
     """Wikirate API客户端，用于获取和验证ESG数据"""
