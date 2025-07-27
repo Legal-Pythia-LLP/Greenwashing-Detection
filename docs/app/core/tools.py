@@ -38,27 +38,33 @@ class WikirateClient:
         """搜尋公司資訊，支援精準名稱與模糊搜尋"""
         try:
             original_name = company_name.strip()
-            clean_name = original_name.strip().replace(" ", "_")
+            clean_name = original_name.strip()
+            print(f"[Wikirate] 嘗試精準搜尋：--{clean_name}--")
             direct_url = f"{self.base_url}/{clean_name}.json"
 
             # print(f"[Wikirate] 嘗試精準搜尋：{direct_url}")
             response = self.session.get(direct_url, timeout=10)
 
-            # print(f"[DEBUG] Status Code: {response.status_code}")
-            # print(f"[DEBUG] Response preview:\n{response.text[:300]}")
+            print(f"[DEBUG] Status Code: {response.status_code}")
+            print(f"[DEBUG] Response preview:\n{response.text[:300]}")
 
             if response.status_code == 200:
                 data = response.json()
-                # print(f"[Wikirate] 精準找到公司: {data.get('name')}")
+                # 安全地处理所有字段，避免None.get()报错
+                def safe_get(d, key, default=None):
+                    if d and isinstance(d, dict):
+                        return d.get(key, default)
+                    return default
 
                 return {
                     "name": data.get("name"),
                     "url": data.get("url"),
-                    "type": data.get("type", {}).get("name"),
-                    "headquarters": data.get("headquarters", {}).get("content", [None])[0],
-                    "website": data.get("website", {}).get("content"),
-                    "aliases": data.get("alias", {}).get("content", []),
-                    "image_url": data.get("image", {}).get("content")
+                    "type": safe_get(data.get("type"), "name"),
+                    "headquarters": (safe_get(data.get("headquarters"), "content", [None])[0]
+                                     if safe_get(data.get("headquarters"), "content") else None),
+                    "website": safe_get(data.get("website"), "content"),
+                    "aliases": safe_get(data.get("alias"), "content", []),
+                    "image_url": safe_get(data.get("image"), "content")
                 }
 
             # 若精準搜尋失敗，改用 search API 做模糊搜尋
@@ -85,49 +91,86 @@ class WikirateClient:
             return {}
 
 
-    def get_company_metrics(self, company_name: str, metrics: List[str] = None) -> Dict[str, Any]:
-        """获取公司的ESG指标数据"""
+    def get_company_metrics(self, company_name: str) -> Dict[str, Any]:
+        """获取公司的ESG指标数据，使用wikirate4py API"""
         try:
-            results = {}
-            company_data = self.search_company(company_name)
-
-            if not company_data:
-                return {"error": "Company not found"}
-
-            # 获取默认ESG指标如果没有指定
-            if not metrics:
-                metrics = [
-                    "CDP+Scope_1_Emissions",
-                    "CDP+Scope_2_Emissions",
-                    "CDP+Scope_3_Emissions",
-                    "CDP+Total_Scope_1_and_2_Emissions",
-                    "GRI+Water_Consumption",
-                    "GRI+Energy_Consumption",
-                    "SASB+Greenhouse_Gas_Emissions",
-                    "Walk_Free+Modern_Slavery_Statement"
-                ]
-
-            for metric in metrics:
-                try:
-                    # 构建答案查询URL (METRIC+COMPANY+YEAR格式)
-                    # 获取最近几年的数据
-                    for year in [2023, 2022, 2021]:
-                        metric_url = f"{self.base_url}/{metric}+{company_name}+{year}.json"
-                        response = self.session.get(metric_url, timeout=10)
-
-                        if response.status_code == 200:
-                            metric_data = response.json()
-                            if metric not in results:
-                                results[metric] = {}
-                            results[metric][str(year)] = metric_data
-                            break  # 找到数据就跳出年份循环
-
-                except Exception as e:
-                    print(f"Error fetching metric {metric}: {e}")
-                    continue
-
+            from wikirate4py import API
+            
+            # 初始化wikirate4py API
+            api = API(self.api_key)
+            
+            # 获取公司信息
+            company = api.get_company(company_name)
+            if not company:
+                return {"error": f"Company '{company_name}' not found"}
+            
+            # 分页获取所有答案
+            all_answers = []
+            limit = 5
+            offset = 0
+            max_total = 10  # 最多获取200条记录
+            
+            while len(all_answers) < max_total:
+                batch = api.get_answers(company=company.name, limit=min(limit, max_total - len(all_answers)), offset=offset)
+                if not batch:
+                    break
+                all_answers.extend(batch)
+                if len(batch) < limit or len(all_answers) >= max_total:
+                    break
+                offset += limit
+            
+            # 筛选ESG相关指标
+            esg_topics = ["environment", "social", "governance"]
+            esg_metrics = set()
+            metric_cache = {}
+            
+            # 获取所有指标的ESG主题
+            for answer in all_answers:
+                metric_name = answer.metric
+                if metric_name in metric_cache:
+                    topics = metric_cache[metric_name]
+                else:
+                    try:
+                        metric_obj = api.get_metric(metric_name)
+                        topics_raw = getattr(metric_obj, 'topics', [])
+                        topics = []
+                        for t in topics_raw or []:
+                            if isinstance(t, str):
+                                topics.append(t.lower())
+                            elif isinstance(t, dict) and 'name' in t:
+                                topics.append(t['name'].lower())
+                        metric_cache[metric_name] = topics
+                    except Exception as e:
+                        print(f"获取指标 {metric_name} 主题失败: {e}")
+                        topics = []
+                        metric_cache[metric_name] = topics
+                
+                if any(topic in topics for topic in esg_topics):
+                    esg_metrics.add(metric_name)
+            
+            # 构建返回结果
+            results = {
+                "company_name": company_name,
+                "total_answers": len(all_answers),
+                "esg_metrics_count": len(esg_metrics),
+                "esg_data": []
+            }
+            
+            # 提取ESG相关指标的数据
+            for answer in all_answers:
+                if answer.metric in esg_metrics:
+                    record = {
+                        "metric_name": answer.metric,
+                        "year": getattr(answer, 'year', None),
+                        "value": getattr(answer, 'value', None),
+                        "comments": getattr(answer, 'comments', None),
+                        "source": getattr(answer, 'source', None),
+                        "topics": metric_cache.get(answer.metric, [])
+                    }
+                    results["esg_data"].append(record)
+            
             return results
-
+            
         except Exception as e:
             print(f"Error getting company metrics: {e}")
             return {"error": str(e)}
@@ -177,6 +220,7 @@ class WikirateValidationTool(BaseTool):
                 validation_results["company_found"] = True
 
                 # 获取公司的ESG指标
+                # lqw
                 metrics_data = self.wikirate_client.get_company_metrics(self.company_name)
 
                 if "error" not in metrics_data:
