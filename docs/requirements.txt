@@ -1,16 +1,28 @@
+# --- Web 相关 ---
 fastapi
 uvicorn
+python-dotenv
+starlette
+python-multipart
+requests
+
+# --- LLM 模块 ---
 langchain
 langchain-openai
 langchain-community
 langgraph
 transformers
 torch
+
+# --- 数据处理 ---
 pandas
-python-dotenv
-starlette
-chromadb
 beautifulsoup4
-requests
-python-multipart
+chromadb
 pypdf
+
+# --- OCR 相关 ---
+paddleocr>=2.6
+paddlepaddle>=2.4  # 可写死具体版本
+opencv-python
+pytesseract
+Pillow
