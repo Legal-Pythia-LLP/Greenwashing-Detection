@@ -14,3 +14,34 @@ __pycache__/
 **/__pycache__/
 *.pyc
 *.pyo
+# ====================== PaddleOCR / Python 项目补充 ======================
+
+# 忽略 paddle 虚拟环境（你的项目中叫 paddle_ocr_clean）
+/docs/paddle_ocr_clean/
+/paddle_ocr_clean/
+
+# 忽略 PaddleOCR 自动下载的模型缓存
+.paddlex/
+~/.paddleocr/
+~/.paddle/
+*.pdmodel
+*.pdiparams
+*.onnx
+*.ckpt
+*.h5
+
+# 忽略 FastAPI 运行生成的临时文件
+temp_ocr_input.png
+*.log
+
+# 忽略 VSCode 编辑器缓存
+.vscode/
+docs/.vscode/
+
+# 忽略 macOS / Windows 特有系统文件
+.DS_Store
+Thumbs.db
+
+# 忽略图片缓存 / 临时测试图
+docs/*.png
+docs/*.jpg
