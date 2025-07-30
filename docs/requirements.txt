@@ -16,3 +16,4 @@ python-multipart
 pypdf
 cloudscraper
 wikirate4py
+name_matching

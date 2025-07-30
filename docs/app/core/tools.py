@@ -10,6 +10,35 @@ import requests
 import cloudscraper
 from app.config import WIKIRATE_API_KEY
 
+# get_company_name
+from wikirate4py import API
+from pprint import pprint
+import pandas as pd
+from name_matching.name_matcher import NameMatcher
+import time
+import csv
+import re
+import multiprocessing
+
+# 名字模糊比對
+# ✅ 自訂 normalization 方法（模仿 NameMatcher transform=True）
+def normalize_name(name: str) -> str:
+    name = name.lower()
+    name = re.sub(r'[^a-z0-9\s]', '', name)  # 移除標點符號
+    name = re.sub(r'\s+', ' ', name)  # 移除多餘空白
+    return name.strip()
+
+def get_isin_count(company):
+    """從公司物件中讀取 ISIN 數量"""
+    try:
+        isin = getattr(company, "isin", None)
+        isin_list = isin if isinstance(isin, list) else []
+        return len(isin_list)
+    except Exception as e:
+        print(f"⚠️ 無法處理公司 {company}: {e}")
+        return 0
+
+
 class WikirateClient:
     """Wikirate API客户端，用于获取和验证ESG数据"""
 
@@ -90,6 +119,96 @@ class WikirateClient:
             # print(f"[Wikirate] 搜尋時發生錯誤: {e}")
             return {}
 
+    # ✅ 主函數：根據輸入名稱模糊比對，並根據 ISIN 數量選擇最佳匹配
+    def find_best_matching_company(self, input_name: str) -> str:
+        # self.parallel_fetch(num_workers=6)
+
+        # 加载公司数据
+        csv_path = "wikirate_companies_all.csv"
+        wikirate_companies = []
+        
+        try:
+            with open(csv_path, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    wikirate_companies.append({
+                        'id': row['id'],
+                        'name': row['name'],
+                        'isin_count': int(row['isin_count'])
+                    })
+        except FileNotFoundError:
+            print(f"❌ 找不到公司数据文件: {csv_path}")
+            return None
+        
+        keyword = input_name.lower()
+        filtered_companies = [c for c in wikirate_companies if keyword in c['name'].lower()]
+        if not filtered_companies:
+            print("❌ 找不到任何名稱包含關鍵字的公司")
+            return None
+
+        # ✅ 印出所有符合條件的公司名稱
+        print("🔍 找到以下包含關鍵字的公司：")
+        for c in filtered_companies:
+            print(f" - {c['name']}")
+
+        company_names = [c['name'] for c in filtered_companies]
+
+        # 建立轉換對照表
+        normalized_map = {}
+        for c in wikirate_companies:
+            original_name = c['name'] if isinstance(c, dict) else c
+            normalized = normalize_name(original_name)
+            normalized_map[normalized] = {
+                'original_name': original_name,
+                'isin_count': c.get('isin_count', 0) if isinstance(c, dict) else 0
+            }
+
+        df_master = pd.DataFrame({'Company name': company_names})
+        df_input = pd.DataFrame({'name': [input_name]})
+
+        matcher = NameMatcher(
+            number_of_matches=5,
+            legal_suffixes=True,
+            common_words=False,
+            top_n=50,
+            verbose=False
+        )
+        matcher.set_distance_metrics(['bag', 'typo', 'refined_soundex'])
+        matcher.load_and_process_master_data(column='Company name', df_matching_data=df_master, transform=True)
+        matches = matcher.match_names(to_be_matched=df_input, column_matching='name')
+
+        if matches.empty:
+            return None
+
+        # 🧪 印出所有匹配的名稱與分數
+        print("🧪 所有匹配結果：")
+        results = []
+        for i in range(5):
+            match_name_col = f'match_name_{i}'
+            score_col = f'score_{i}'
+            if match_name_col in matches.columns and score_col in matches.columns:
+                match_name = matches.at[0, match_name_col]
+                score = matches.at[0, score_col]
+                if pd.notna(match_name):
+                    normalized = normalize_name(match_name)
+                    isin_count = normalized_map.get(normalized, {}).get('isin_count', 0)
+                    print(f"{i + 1}. {match_name}  👉 分數: {score:.2f}  🆔 ISIN數量: {isin_count}")
+                    results.append((normalized, score))
+
+        if not results:
+            return None
+
+        # 找出最高分
+        max_score = max(score for _, score in results)
+        top_matches = [name for name, score in results if score == max_score]
+
+        # 如果只有一個最高分 → 回傳原始名稱
+        if len(top_matches) == 1:
+            return normalized_map.get(top_matches[0], {}).get('original_name', top_matches[0])
+
+        # 如果有多個最高分 → 用 isin_count 挑選
+        best_match = max(top_matches, key=lambda name: normalized_map.get(name, {}).get('isin_count', 0))
+        return normalized_map.get(best_match, {}).get('original_name', best_match)
 
     def get_company_metrics(self, company_name: str) -> Dict[str, Any]:
         """获取公司的ESG指标数据，使用wikirate4py API"""
@@ -226,14 +345,13 @@ class WikirateValidationTool(BaseTool):
                 "verification_score": 0.0
             }
 
-            # 搜索公司
-            company_data = self.wikirate_client.search_company(self.company_name)
+            # 根據輸入名稱模糊比對，並根據 ISIN 數量選擇最佳匹配
+            self.company_name = self.wikirate_client.find_best_matching_company(self.company_name)
 
-            if company_data:
+            if self.company_name:
                 validation_results["company_found"] = True
 
                 # 获取公司的ESG指标
-                # lqw
                 metrics_data = self.wikirate_client.get_company_metrics(self.company_name)
 
                 if "error" not in metrics_data:
