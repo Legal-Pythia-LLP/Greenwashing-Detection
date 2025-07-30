@@ -189,7 +189,7 @@ def validate_with_wikirate(state: ESGAnalysisState) -> ESGAnalysisState:
 
     if state.get("error"):
         return state
-
+    
     company_name = state.get("company_name", "")
     document_analysis = state.get("document_analysis", "")
 

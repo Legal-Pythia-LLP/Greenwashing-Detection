@@ -44,8 +44,8 @@ class WikirateClient:
             # print(f"[Wikirate] 嘗試精準搜尋：{direct_url}")
             response = self.session.get(direct_url, timeout=10)
 
-            # print(f"[DEBUG] Status Code: {response.status_code}")
-            # print(f"[DEBUG] Response preview:\n{response.text[:300]}")
+            print(f"[DEBUG] Status Code: {response.status_code}")
+            print(f"[DEBUG] Response preview:\n{response.text[:300]}")
 
             if response.status_code == 200:
                 data = response.json()
@@ -85,8 +85,55 @@ class WikirateClient:
             return {}
 
 
+    # def get_company_metrics(self, company_name: str, metrics: List[str] = None) -> Dict[str, Any]:
+    #     """获取公司的ESG指标数据"""
+    #     try:
+    #         results = {}
+    #         company_data = self.search_company(company_name)
+
+    #         if not company_data:
+    #             return {"error": "Company not found"}
+
+    #         # 获取默认ESG指标如果没有指定
+    #         if not metrics:
+    #             metrics = [
+    #                 "CDP+Scope_1_Emissions",
+    #                 "CDP+Scope_2_Emissions",
+    #                 "CDP+Scope_3_Emissions",
+    #                 "CDP+Total_Scope_1_and_2_Emissions",
+    #                 "GRI+Water_Consumption",
+    #                 "GRI+Energy_Consumption",
+    #                 "SASB+Greenhouse_Gas_Emissions",
+    #                 "Walk_Free+Modern_Slavery_Statement"
+    #             ]
+
+    #         for metric in metrics:
+    #             try:
+    #                 # 构建答案查询URL (METRIC+COMPANY+YEAR格式)
+    #                 # 获取最近几年的数据
+    #                 for year in [2023, 2022, 2021]:
+    #                     metric_url = f"{self.base_url}/{metric}+{company_name}+{year}.json"
+    #                     response = self.session.get(metric_url, timeout=10)
+
+    #                     if response.status_code == 200:
+    #                         metric_data = response.json()
+    #                         if metric not in results:
+    #                             results[metric] = {}
+    #                         results[metric][str(year)] = metric_data
+    #                         break  # 找到数据就跳出年份循环
+
+    #             except Exception as e:
+    #                 print(f"Error fetching metric {metric}: {e}")
+    #                 continue
+
+    #         return results
+
+    #     except Exception as e:
+    #         print(f"Error getting company metrics: {e}")
+    #         return {"error": str(e)}
+
     def get_company_metrics(self, company_name: str, metrics: List[str] = None) -> Dict[str, Any]:
-        """获取公司的ESG指标数据"""
+        """抓取某公司出現過的所有 ESG 指標（不限預設 metrics）"""
         try:
             results = {}
             company_data = self.search_company(company_name)
@@ -94,42 +141,62 @@ class WikirateClient:
             if not company_data:
                 return {"error": "Company not found"}
 
-            # 获取默认ESG指标如果没有指定
-            if not metrics:
-                metrics = [
-                    "CDP+Scope_1_Emissions",
-                    "CDP+Scope_2_Emissions",
-                    "CDP+Scope_3_Emissions",
-                    "CDP+Total_Scope_1_and_2_Emissions",
-                    "GRI+Water_Consumption",
-                    "GRI+Energy_Consumption",
-                    "SASB+Greenhouse_Gas_Emissions",
-                    "Walk_Free+Modern_Slavery_Statement"
-                ]
+            offset = 0
+            limit = 100
+            max_total = 1000  # 最多抓 1000 筆，避免被 ban
+            fetched = 0
 
-            for metric in metrics:
-                try:
-                    # 构建答案查询URL (METRIC+COMPANY+YEAR格式)
-                    # 获取最近几年的数据
-                    for year in [2023, 2022, 2021]:
-                        metric_url = f"{self.base_url}/{metric}+{company_name}+{year}.json"
-                        response = self.session.get(metric_url, timeout=10)
+            while fetched < max_total:
+                params = {
+                    "filter[company_name]": company_name,
+                    "limit": limit,
+                    "offset": offset,
+                    # "view": "full"
+                }
+                response = self.session.get(f"{self.base_url}/Answer.json", params=params, timeout=10)
 
-                        if response.status_code == 200:
-                            metric_data = response.json()
-                            if metric not in results:
-                                results[metric] = {}
-                            results[metric][str(year)] = metric_data
-                            break  # 找到数据就跳出年份循环
+                print("[DEBUG] URL:", response.url)
+                print("[DEBUG] Status:", response.status_code)
+                print("[DEBUG] Content:", response.text[:500])
 
-                except Exception as e:
-                    print(f"Error fetching metric {metric}: {e}")
-                    continue
+                if response.status_code != 200:
+                    print(f"Error fetching data from Wikirate API (status {response.status_code})")
+                    break
 
-            return results
+                data = response.json()
+                items = data.get("items", [])
+                if not items:
+                    break
+
+                for item in items:
+                    # 抓 metric name、year、value
+                    metric_obj = item.get("metric") or {}
+                    metric_name = metric_obj.get("name") if isinstance(metric_obj, dict) else metric_obj
+                    year = str(item.get("year"))
+                    value = item.get("value")
+
+                    if not metric_name or not year:
+                        continue
+
+                    if metrics and metric_name not in metrics:
+                        continue  # 如果使用者有傳 metrics，則只保留目標範圍
+
+                    # 將資料加入結果
+                    if metric_name not in results:
+                        results[metric_name] = {}
+                    results[metric_name][year] = {
+                        "value": value,
+                        "source_url": item.get("url"),
+                        "comments": item.get("comments")
+                    }
+
+                fetched += len(items)
+                offset += limit
+
+            return results if results else {"error": "No metric data found"}
 
         except Exception as e:
-            print(f"Error getting company metrics: {e}")
+            print(f"Error in get_company_metrics: {e}")
             return {"error": str(e)}
 
     def get_metric_details(self, metric_name: str) -> Dict[str, Any]:
