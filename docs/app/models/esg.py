@@ -21,9 +21,9 @@ class ESGAnalysisState(TypedDict):
     vector_store: Any
     initial_thoughts: List[str]
     selected_thoughts: List[str]
-    document_analysis: str
+    document_analysis: List[str]
     news_validation: str
-    wikirate_validation: str  # 新增Wikirate验证结果
+    wikirate_validation: str
     metrics: str
     final_synthesis: str
     iteration: int

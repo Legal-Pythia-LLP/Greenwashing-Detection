@@ -1,5 +1,5 @@
 from typing import Dict, Any, List
-from app.core.tools import ESGDocumentAnalysisTool, NewsValidationTool, ESGMetricsCalculatorTool
+from app.core.tools import ESGDocumentAnalysisTool, NewsValidationTool, ESGMetricsCalculatorTool, WikirateValidationTool
 from app.core.llm import llm, climatebert_tokenizer, climatebert_model
 from app.config import VALID_COMPANIES
 from app.models import ESGAnalysisState
@@ -38,6 +38,7 @@ def generate_initial_thoughts(state: ESGAnalysisState) -> ESGAnalysisState:
     - The methodology to use
     - What evidence to look for
     - Potential red flags to identify
+    - External data verification and verification methods required(If external data verification is not required, you can write “none.” Your current external data access is limited to **company news and open ESG data**. You do not have extensive access to long-term historical performance data or comprehensive peer comparison data beyond what might be present in open ESG datasets or mentioned in news.)
     
     Format your response as a JSON list of 4 analytical approaches.
     """
@@ -116,7 +117,7 @@ def perform_document_analysis(state: ESGAnalysisState) -> ESGAnalysisState:
         return state
         
     vector_store = state.get("vector_store")
-    selected_thoughts = state.get("selected_thoughts", [])
+    selected_thoughts = state.get("initial_thoughts", [])
     
     if not vector_store:
         state["error"] = "No vector store available for analysis"
@@ -134,9 +135,8 @@ def perform_document_analysis(state: ESGAnalysisState) -> ESGAnalysisState:
             result = analysis_tool._run(query)
             analysis_results.append(result)
         
-        # Combine results
-        combined_analysis = "\n\n=== ANALYSIS APPROACH ===\n\n".join(analysis_results)
-        state["document_analysis"] = combined_analysis
+
+        state["document_analysis"] = analysis_results
         
         return state
         
@@ -189,7 +189,7 @@ def validate_with_wikirate(state: ESGAnalysisState) -> ESGAnalysisState:
 
     if state.get("error"):
         return state
-
+    
     company_name = state.get("company_name", "")
     document_analysis = state.get("document_analysis", "")
 
@@ -238,12 +238,11 @@ def calculate_metrics(state: ESGAnalysisState) -> ESGAnalysisState:
         
     document_analysis = state.get("document_analysis", "")
     news_validation = state.get("news_validation", "")
-    
+
     combined_analysis = f"""
-    Document Analysis: {document_analysis}
-    
-    News Validation: {news_validation}
-    """
+        Greenwashing Evidence: {document_analysis}
+
+        """
     
     try:
         # Create metrics calculator
@@ -269,24 +268,28 @@ def synthesize_final_report(state: ESGAnalysisState) -> ESGAnalysisState:
     news_validation = state.get("news_validation", "")
     metrics = state.get("metrics", "")
     
+
+
     synthesis_prompt = f"""
     Create a comprehensive final ESG greenwashing assessment report that synthesizes all findings:
-    
+
     Document Analysis: {document_analysis}
-    
+
     News Validation: {news_validation}
-    
+
     Metrics: {metrics}
-    
-    Your report should include:
-    1. Executive Summary with overall greenwashing score (0-10)
-    2. Key findings and evidence
-    3. News validation results and their implications
-    4. Specific recommendations for stakeholders
-    5. Risk assessment and concferns
-    6. Areas requiring further investigation
-    
-    Provide a professional, detailed report suitable for executive review.
+
+    Your report should be professional, detailed, and suitable for executive review, structured as follows:
+    1.  **Executive Summary**: Provide a concise overview of the assessment, including the overall greenwashing score (0-10).
+    2.  **Key Findings and Evidence from Document Analysis**: Detail the quotation, explanation and greenwashing_likelihood_score derived from the Document Analysis.
+    3.  **Greenwashing Types, Likelihood, and Overall Score**:
+    * For each of the five greenwashing types identified in the Metrics, describe its likelihood.
+    * Present the final overall greenwashing score.
+    4.  **Specific Recommendations for Stakeholders**: Offer actionable recommendations tailored for relevant stakeholders.
+    5.  **Risk Assessment and Concerns**: Outline potential risks and areas of concern related to the identified greenwashing.
+    6.  **Areas Requiring Further Investigation**: Identify specific areas where more in-depth research or data collection is needed.
+
+    Ensure the report integrates insights from News Validation throughout the relevant sections, especially when discussing evidence and implications.
     """
     
     try:
@@ -326,7 +329,7 @@ def create_esg_analysis_graph():
     
     # Add nodes
     workflow.add_node("generate_thoughts", generate_initial_thoughts)
-    workflow.add_node("evaluate_thoughts", evaluate_and_select_thoughts)
+    # workflow.add_node("evaluate_thoughts", evaluate_and_select_thoughts)
     workflow.add_node("document_analysis", perform_document_analysis)
     workflow.add_node("news_validation", validate_with_news)
     workflow.add_node("wikirate_validation", validate_with_wikirate)  # 新增节点
@@ -334,8 +337,8 @@ def create_esg_analysis_graph():
     workflow.add_node("final_synthesis", synthesize_final_report)
     
     # Add edges
-    workflow.add_edge("generate_thoughts", "evaluate_thoughts")
-    workflow.add_edge("evaluate_thoughts", "document_analysis")
+    workflow.add_edge("generate_thoughts", "document_analysis")
+    # workflow.add_edge("evaluate_thoughts", "document_analysis")
     workflow.add_edge("document_analysis", "news_validation")
     workflow.add_edge("news_validation", "wikirate_validation")  # 新增边
     workflow.add_edge("wikirate_validation", "calculate_metrics")
