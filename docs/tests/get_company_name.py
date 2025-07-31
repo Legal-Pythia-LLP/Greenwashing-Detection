@@ -8,10 +8,13 @@ import re
 import multiprocessing
 
 api = API("JoDaOQXoU2vzgRAbaArQlwtt")
+
 # 多線程抓 company id, company name, ISIN 數量
 PAGE_SIZE = 100
 MAX_PAGES = 100000  # 預估最多抓幾頁，無資料時會自動停止
 OUTPUT_FILE = "wikirate_companies_all.csv"  # 你要的檔名
+
+csv_path = "wikirate_companies_all.csv"
 
 def get_isin_count(company):
     """從公司物件中讀取 ISIN 數量"""
@@ -21,6 +24,7 @@ def get_isin_count(company):
         return len(isin_list)
     except Exception as e:
         print(f"無法處理公司 {company}: {e}")
+
         return 0
 
 def worker(task_queue, result_queue, worker_id):
@@ -34,6 +38,7 @@ def worker(task_queue, result_queue, worker_id):
         companies = api.get_companies(limit=PAGE_SIZE, offset=offset)
         if not companies:
             print(f"Worker {worker_id} - offset {offset} 沒有資料，停止")
+
             break
 
         results = []
@@ -43,8 +48,8 @@ def worker(task_queue, result_queue, worker_id):
 
         for row in results:
             result_queue.put(row)
-
         print(f"Worker {worker_id} - 抓取 offset {offset} 共 {len(companies)} 筆")
+
         time.sleep(0.2)  # 控制速度避免 API 限制
 
 def parallel_fetch(num_workers=6):
@@ -68,6 +73,7 @@ def parallel_fetch(num_workers=6):
         p.join()
 
     print("所有 worker 完成，準備寫入檔案...")
+
 
     # 寫入 CSV 結果
     with open(OUTPUT_FILE, "w", newline="", encoding="utf-8") as csvfile:
@@ -166,34 +172,35 @@ def find_best_matching_company(input_name: str, wikirate_companies: list) -> str
     best_match = max(top_matches, key=lambda name: normalized_map.get(name, {}).get('isin_count', 0))
     return normalized_map.get(best_match, {}).get('original_name', best_match)
 
+
 # ============================================================================================================
 # # test
 # input_name = "Apple Inc"
 # company_list = ["Apple Inc.", "Apple AB", "APPLE PTY LIMITED", "APPLE EUROPE LIMITED", "APPLE APPAREL (CAMBODIA) CO., LTD"]
-
+#
 # best_match = find_best_matching_company(input_name, company_list)
 # print(" 最佳匹配結果:", best_match)
-
+#
 # # 測試參數
 # input_name = "hsbc"
 # csv_path = "wikirate_companies_all.csv"
-
+#
 # # 讀取 CSV
 # df = pd.read_csv(csv_path)
-
+#
 # # 確保欄位存在
 # if "name" not in df.columns or "isin_count" not in df.columns:
 #     raise ValueError("CSV 檔案中需要包含 'name' 和 'isin_count' 欄位")
-
+#
 # # 準備成 list of dict 結構
 # wikirate_companies = df[["name", "isin_count"]].to_dict(orient="records")
-
+#
 # # 執行匹配函數
 # best_match = find_best_matching_company(input_name, wikirate_companies)
-
+#
 # # 輸出結果
 # print(f"\n對於輸入 '{input_name}'，最佳匹配公司名稱為：{best_match}")
-
+#
 # ============================================================================================================
 # # 模擬 csv 中的公司資料
 # wikirate_companies = [
@@ -204,13 +211,11 @@ def find_best_matching_company(input_name: str, wikirate_companies: list) -> str
 #     {"id": 1102, "name": "Apple AB", "isin_count": 20},
 #     {"id": 1103, "name": "Apple AInc", "isin_count": 100}
 # ]
-
+#
 # input_name = "apple"
 # result = find_best_matching_company(input_name, wikirate_companies)
-
+#
 # print(f"\n 測試結果：輸入: {input_name}，匹配到：{result}")
-
-
 
 
 

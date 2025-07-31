@@ -1,0 +1,30 @@
+{
+  "input_company": "Apple",
+  "matched_company": "Apple Inc.",
+  "metrics_data": {
+    "company_name": "Apple Inc.",
+    "total_answers": 20,
+    "esg_metrics_count": 3,
+    "esg_data": [
+      {
+        "metric_name": "UN Global Compact+UNGC Status",
+        "year": 2025,
+        "value": "Non-Communicating",
+        "unit": null
+      },
+      {
+        "metric_name": "US Securities and Exchange Commission+Unrecognized Tax Benefits Reductions Resulting from Lapse of Applicable statute of Limitations",
+        "year": 2024,
+        "value": "229000000",
+        "unit": "USD"
+      },
+      {
+        "metric_name": "US Securities and Exchange Commission+Income Tax Expense Benefit",
+        "year": 2024,
+        "value": "29749000000",
+        "unit": "USD"
+      }
+    ]
+  },
+  "test_timestamp": "20250730_162107"
+}
