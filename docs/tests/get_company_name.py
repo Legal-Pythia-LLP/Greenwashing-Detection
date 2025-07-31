@@ -403,9 +403,9 @@ def find_best_matching_company(input_name: str, wikirate_companies: list) -> str
     matcher = NameMatcher(
         number_of_matches=5,
         legal_suffixes=True,
-        common_words=False,
+        common_words=True,
         top_n=50,
-        verbose=False
+        verbose=True
     )
     matcher.set_distance_metrics(['bag', 'typo', 'refined_soundex'])
     matcher.load_and_process_master_data(column='Company name', df_matching_data=df_master, transform=True)
@@ -453,7 +453,7 @@ def find_best_matching_company(input_name: str, wikirate_companies: list) -> str
 # print("🔍 最佳匹配結果:", best_match)
 
 # 測試參數
-input_name = "apple"
+input_name = "hsbc"
 csv_path = "wikirate_companies_all.csv"
 
 # 讀取 CSV
