@@ -510,43 +510,61 @@ class NewsValidationTool(BaseTool):
 
     def _run(self, claims: str) -> str:
         try:
-            news_content = search_and_filter_news(self.company_name, max_articles=5)
+            # 👇 修改：让搜索函数返回内容 + 标题
+            news_content, used_titles = search_and_filter_news(self.company_name, max_articles=10)
+
             if not news_content:
-                    return "No relevant news articles found for this company"
+                return "No relevant news articles found for this company"
+
+            # ✅ 打印使用到的新闻标题
+            print("[📰 使用的新闻文章]")
+            for idx, title in enumerate(used_titles, start=1):
+                print(f"{idx}. {title}")
+
             news_text = "\n\n".join(news_content)
+
             validation_prompt = f"""
             You are an expert ESG validation analyst.
 
             Your task is to assess how well each ESG claim is reflected in the following news articles.
 
-            ### Instructions:
-            - You may consider a claim "Supported" even if the wording is different, as long as the topic is thematically relevant (e.g., fossil fuel protest, climate goals, ESG disclosures).
-            - If the article mentions related controversies, criticisms, or policy issues, these may indicate indirect validation.
-            - If truly nothing aligns, return "Not mentioned".
+            ---
 
-            ### Definitions:
-            - **Supported**: Clearly backed by the article.
-            - **Contradicted**: Article undermines or denies the claim.
-            - **Indicated**: Thematically aligned or implied support.
-            - **Not mentioned**: No relevant or indirect content found.
+            Instructions:
+            - If the article directly supports or contradicts a claim, label it as **Supported** or **Contradicted**
+            - If the article covers related topics (e.g., fossil fuel protests, ESG controversies, financing debates, policy discussions), even without explicitly restating the claim, label it as **Indicated**
+            - If there's truly no connection, mark it as **Not mentioned**
 
-            ### Claims:
+            ---
+
+            Definitions:
+            - **Supported**: Clearly confirms the claim
+            - **Contradicted**: Clearly denies or disproves the claim
+            - **Indicated**: Topic is related, mentioned, or thematically aligned
+            - **Not mentioned**: No relevant or related discussion
+
+            ---
+
+            Claims:
             {claims}
 
-            ### News Articles:
+            News Articles:
             {news_text}
 
             For each claim, respond with:
             1. **Status**: Supported / Contradicted / Indicated / Not mentioned  
-            2. **Reasoning**: Why this status was chosen  
-            3. **Quote(s)**: Cite supporting or contradicting content if available  
+            2. **Reasoning**: Explain why you chose this status  
+            3. **Quote(s)**: Include any relevant quotes if applicable  
             """
+
 
 
             response = llm.invoke([HumanMessage(content=validation_prompt)])
             return response.content
+
         except Exception as e:
             return f"Error in news validation: {str(e)}"
+
 
 
 class ESGMetricsCalculatorTool(BaseTool):

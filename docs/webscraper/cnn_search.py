@@ -84,26 +84,27 @@ def cnn_search(name: str) -> Dict[str, str]:
     """
     CNN 新闻爬虫，搜索与 name 相关的新闻，下载并返回本地路径。
     """
-    depth = 10
+    depth = 50  # ✅ 提高抓取数量上限
     delta = 365 * 2
     last_date = date_calculation(delta)
     web_dictionary = {}
     page_count = 1
     next_page = True
     limit = False
+
     while next_page:
         source = f"https://www.cnn.com/search?q={name}&size=10&page={page_count}"
         response = requests.get(source)
-        if page_count > 29:
-            break
         response.encoding = "utf-8"
         soup = BeautifulSoup(response.text, "html.parser")
         articles = soup.find_all(
             "div",
             attrs={"data-uri": re.compile(r"^/_components/card/instances/search-")},
         )
+
         if not articles:
             break
+
         for article in articles:
             title_struct = article.find("span", class_="container__headline-text")
             if not title_struct:
@@ -124,20 +125,23 @@ def cnn_search(name: str) -> Dict[str, str]:
             try:
                 date = date_conversion(article_date)
             except:
-                continue  # Skips the unnecessary part of the code
+                continue
+
             size = len(web_dictionary) + 1 <= depth
             if url_validity(link) and size and date >= last_date:
                 web_dictionary[title] = link
             elif not size:
                 limit = True
                 break
-        if limit:  # checks if we have reached the 10 page limit, speeding up runtime
+
+        if limit:
             next_page = False
         else:
             page_count += 1
-    local_file_dict = {}
+            if page_count > 50:  # ✅ 可选页数限制
+                break
+
     if len(web_dictionary) != 0:
-        local_file_dict = url_download(web_dictionary)
-        return local_file_dict
+        return url_download(web_dictionary)
     else:
-        return None 
+        return None
