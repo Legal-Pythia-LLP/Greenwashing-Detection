@@ -1,6 +1,7 @@
 import os
 import re
 import shutil
+import hashlib
 from datetime import datetime, timedelta
 from typing import Dict
 import requests
@@ -19,26 +20,39 @@ def date_calculation(delta: int) -> datetime:
 def url_download(links: dict, directory: str = "downloads") -> Dict[str, str]:
     """
     下载所有链接到本地目录，返回标题到本地文件路径的映射。
+    会自动处理文件名重复、非法字符问题，避免每次清空目录。
     """
-    if os.path.isdir(directory):
-        shutil.rmtree(directory)
-        print(f"Directory '{directory}' has been deleted.")
     os.makedirs(directory, exist_ok=True)
     downloads_dictionary = {}
+
     try:
         for title, url in links.items():
-            # 移除特殊字符
-            new_title = "".join(char for char in title if char.isalnum())
-            path = os.path.join(directory, f"{new_title}.html")
+            # 标题转安全文件名 + 唯一哈希
+            safe_title = "".join(char for char in title if char.isalnum())
+            if not safe_title:
+                safe_title = "article"
+            title_hash = hashlib.md5(title.encode("utf-8")).hexdigest()[:8]
+            filename = f"{safe_title[:50]}_{title_hash}.html"
+            path = os.path.join(directory, filename)
+
+            # 避免重复下载
+            if os.path.exists(path):
+                downloads_dictionary[title] = path
+                continue
+
             response = requests.get(url, timeout=10)
             with open(path, "w", encoding="utf-8") as f:
                 f.write(response.text)
+
             downloads_dictionary[title] = path
+
     except requests.exceptions.RequestException as e:
-        raise f"Request failed: {e}"
+        raise Exception(f"Request failed: {e}")
     except OSError as e:
-        raise f"File saving error: {e}"
+        raise Exception(f"File saving error: {e}")
+
     return downloads_dictionary
+
 
 
 def url_validity(url: str) -> bool:

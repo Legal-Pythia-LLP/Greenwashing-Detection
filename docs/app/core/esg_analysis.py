@@ -21,9 +21,10 @@ memories: Dict[str, ConversationBufferWindowMemory] = {}
 
 # LangGraph Node Functions
 def generate_initial_thoughts(state: ESGAnalysisState) -> ESGAnalysisState:
+    output_language = state.get("output_language", "en")
     """Generate multiple analytical thoughts for ESG analysis"""
     
-    thought_generation_prompt = """
+    thought_generation_prompt = f"""
     You are an expert ESG analyst tasked with identifying greenwashing in corporate reports.
     Generate 4 different analytical approaches to examine this ESG document for greenwashing indicators.
     
@@ -41,6 +42,7 @@ def generate_initial_thoughts(state: ESGAnalysisState) -> ESGAnalysisState:
     - External data verification and verification methods required(If external data verification is not required, you can write “none.” Your current external data access is limited to **company news and open ESG data**. You do not have extensive access to long-term historical performance data or comprehensive peer comparison data beyond what might be present in open ESG datasets or mentioned in news.)
     
     Format your response as a JSON list of 4 analytical approaches.
+    Please respond in {output_language}.
     """
     
     try:
@@ -67,6 +69,7 @@ def generate_initial_thoughts(state: ESGAnalysisState) -> ESGAnalysisState:
 
 def evaluate_and_select_thoughts(state: ESGAnalysisState) -> ESGAnalysisState:
     """Evaluate the quality of generated thoughts and select the best ones"""
+    output_language = state.get("output_language", "en")
     
     if state.get("error"):
         return state
@@ -86,6 +89,7 @@ def evaluate_and_select_thoughts(state: ESGAnalysisState) -> ESGAnalysisState:
     
     Select the top 3 approaches and explain why they are most suitable.
     Return the selected approaches as a JSON list.
+    Please respond in {output_language}.
     """
     
     try:
@@ -146,61 +150,59 @@ def perform_document_analysis(state: ESGAnalysisState) -> ESGAnalysisState:
 
 def validate_with_news(state: ESGAnalysisState) -> ESGAnalysisState:
     """Validate findings against news sources"""
-    
+
     if state.get("error"):
         return state
-        
+
     company_name = state.get("company_name", "")
     document_analysis = state.get("document_analysis", "")
-    
-    if not company_name or company_name.lower() not in VALID_COMPANIES:
-        state["news_validation"] = "Company name not recognized in valid companies list. News validation skipped."
-        return state
-    
+    lower_name = company_name.lower()
+
     try:
-        # Create news validation tool
         news_tool = NewsValidationTool(company_name)
-        
-        # Extract key claims from document analysis
+
         claims_extraction_prompt = f"""
         Extract the key ESG claims and statements from the following analysis:
-        
+
         Analysis: {document_analysis}
-        
+
         List the main claims that should be validated against news sources.
         """
-        
+
         claims_response = llm.invoke([HumanMessage(content=claims_extraction_prompt)])
         claims = claims_response.content
-        
-        # Validate claims
+
         validation_result = news_tool._run(claims)
+
+        # ✅ 如果公司不在白名单，加提示但仍执行验证
+        if lower_name not in VALID_COMPANIES:
+            validation_result = (
+                f"[Warning] Company '{company_name}' is not in the whitelist. "
+                f"Proceeding with forced news validation.\n\n{validation_result}"
+            )
+
         state["news_validation"] = validation_result
-        
         return state
-        
+
     except Exception as e:
         state["error"] = f"Error in news validation: {str(e)}"
         return state
 
 
+
 def validate_with_wikirate(state: ESGAnalysisState) -> ESGAnalysisState:
-    """新增：使用Wikirate数据库验证ESG指标"""
+    """使用 Wikirate 数据库验证 ESG 指标"""
 
     if state.get("error"):
         return state
-    
+
     company_name = state.get("company_name", "")
     document_analysis = state.get("document_analysis", "")
-
-    if not company_name:
-        state["wikirate_validation"] = "No company name provided for Wikirate validation."
-        return state
+    lower_name = company_name.lower()
 
     try:
         wikirate_tool = WikirateValidationTool(company_name)
 
-        # 提取文档中的ESG指标
         metrics_extraction_prompt = f"""
         Extract specific numerical ESG metrics and values from the following analysis:
 
@@ -219,15 +221,22 @@ def validate_with_wikirate(state: ESGAnalysisState) -> ESGAnalysisState:
         metrics_response = llm.invoke([HumanMessage(content=metrics_extraction_prompt)])
         extracted_metrics = metrics_response.content
 
-        # 使用Wikirate验证
         validation_result = wikirate_tool._run(extracted_metrics)
-        state["wikirate_validation"] = validation_result
 
+        # ✅ 加入 whitelist 提示
+        if lower_name not in VALID_COMPANIES:
+            validation_result = (
+                f"[Warning] Company '{company_name}' is not in the whitelist. "
+                f"Proceeding with forced Wikirate validation.\n\n{validation_result}"
+            )
+
+        state["wikirate_validation"] = validation_result
         return state
 
     except Exception as e:
         state["error"] = f"Error in Wikirate validation: {str(e)}"
         return state
+
 
 
 def calculate_metrics(state: ESGAnalysisState) -> ESGAnalysisState:
@@ -260,7 +269,7 @@ def calculate_metrics(state: ESGAnalysisState) -> ESGAnalysisState:
 
 def synthesize_final_report(state: ESGAnalysisState) -> ESGAnalysisState:
     """Create final comprehensive report"""
-    
+    output_language = state.get("output_language", "en")
     if state.get("error"):
         return state
         
@@ -268,29 +277,79 @@ def synthesize_final_report(state: ESGAnalysisState) -> ESGAnalysisState:
     news_validation = state.get("news_validation", "")
     metrics = state.get("metrics", "")
     
+    if output_language == "de":
+        synthesis_prompt = f"""
+        Erstelle einen umfassenden ESG-Greenwashing-Bewertungsbericht, der alle Ergebnisse zusammenfasst:
 
+        Dokumentenanalyse: {document_analysis}
 
-    synthesis_prompt = f"""
-    Create a comprehensive final ESG greenwashing assessment report that synthesizes all findings:
+        Nachrichtenvalidierung: {news_validation}
 
-    Document Analysis: {document_analysis}
+        Kennzahlen: {metrics}
 
-    News Validation: {news_validation}
+        Struktur des Berichts:
+        1. **Zusammenfassung**: Gib eine kurze Übersicht über die Bewertung, einschließlich des gesamten Greenwashing-Scores (0–10).
+        2. **Schlüsselbefunde und Belege aus der Dokumentenanalyse**: Zitiere konkrete Aussagen, Erklärungen und Greenwashing-Wahrscheinlichkeitswerte.
+        3. **Greenwashing-Typen, Wahrscheinlichkeit und Gesamtscore**:
+        - Beschreibe jeden identifizierten Greenwashing-Typ.
+        - Nenne die jeweilige Wahrscheinlichkeit und gib den endgültigen Gesamtscore an.
+        4. **Spezifische Empfehlungen für Stakeholder**: Konkrete Handlungsempfehlungen für Management, Investoren und Regulierungsbehörden.
+        5. **Risikobewertung und Bedenken**: Potenzielle Reputations-, Finanz- und Regulierungsrisiken.
+        6. **Weitere Untersuchungsbereiche**: Welche Themen oder Datenquellen sollten tiefergehend untersucht werden?
 
-    Metrics: {metrics}
+        Integriere relevante Erkenntnisse aus der Nachrichtenvalidierung in die entsprechenden Abschnitte.
 
-    Your report should be professional, detailed, and suitable for executive review, structured as follows:
-    1.  **Executive Summary**: Provide a concise overview of the assessment, including the overall greenwashing score (0-10).
-    2.  **Key Findings and Evidence from Document Analysis**: Detail the quotation, explanation and greenwashing_likelihood_score derived from the Document Analysis.
-    3.  **Greenwashing Types, Likelihood, and Overall Score**:
-    * For each of the five greenwashing types identified in the Metrics, describe its likelihood.
-    * Present the final overall greenwashing score.
-    4.  **Specific Recommendations for Stakeholders**: Offer actionable recommendations tailored for relevant stakeholders.
-    5.  **Risk Assessment and Concerns**: Outline potential risks and areas of concern related to the identified greenwashing.
-    6.  **Areas Requiring Further Investigation**: Identify specific areas where more in-depth research or data collection is needed.
+        Antworte bitte vollständig auf Deutsch.
+        """
+    elif output_language == "it":
+        synthesis_prompt = f"""
+        Crea un rapporto completo di valutazione del greenwashing ESG che sintetizzi tutti i risultati:
 
-    Ensure the report integrates insights from News Validation throughout the relevant sections, especially when discussing evidence and implications.
-    """
+        Analisi del documento: {document_analysis}
+
+        Validazione tramite notizie: {news_validation}
+
+        Metriche: {metrics}
+
+        Struttura del rapporto:
+        1. **Sintesi esecutiva**: Fornisci una panoramica sintetica della valutazione, incluso il punteggio complessivo di greenwashing (da 0 a 10).
+        2. **Risultati chiave ed evidenze dall'analisi del documento**: Riporta le citazioni, le spiegazioni e i punteggi di probabilità di greenwashing.
+        3. **Tipologie di greenwashing, probabilità e punteggio complessivo**:
+        - Descrivi ciascuna tipologia identificata.
+        - Indica la probabilità e fornisci il punteggio finale complessivo.
+        4. **Raccomandazioni specifiche per gli stakeholder**: Suggerimenti concreti per la direzione aziendale, gli investitori e gli enti regolatori.
+        5. **Valutazione dei rischi e preoccupazioni**: Potenziali rischi reputazionali, finanziari e normativi.
+        6. **Aree che richiedono ulteriori indagini**: Temi o dati che necessitano di ulteriori approfondimenti.
+
+        Integra nel rapporto le informazioni emerse dalla validazione delle notizie, ove rilevante.
+
+        Rispondi interamente in italiano.
+        """
+    else:
+        synthesis_prompt = f"""
+        Create a comprehensive final ESG greenwashing assessment report that synthesizes all findings:
+
+        Document Analysis: {document_analysis}
+
+        News Validation: {news_validation}
+
+        Metrics: {metrics}
+
+        Your report should be professional, detailed, and suitable for executive review, structured as follows:
+        1.  **Executive Summary**: Provide a concise overview of the assessment, including the overall greenwashing score (0-10).
+        2.  **Key Findings and Evidence from Document Analysis**: Detail the quotation, explanation and greenwashing_likelihood_score derived from the Document Analysis.
+        3.  **Greenwashing Types, Likelihood, and Overall Score**:
+            * For each of the five greenwashing types identified in the Metrics, describe its likelihood.
+            * Present the final overall greenwashing score.
+        4.  **Specific Recommendations for Stakeholders**: Offer actionable recommendations tailored for relevant stakeholders.
+        5.  **Risk Assessment and Concerns**: Outline potential risks and areas of concern related to the identified greenwashing.
+        6.  **Areas Requiring Further Investigation**: Identify specific areas where more in-depth research or data collection is needed.
+
+        Ensure the report integrates insights from News Validation throughout the relevant sections, especially when discussing evidence and implications.
+
+        Please respond in English.
+        """
+
     
     try:
         response = llm.invoke([HumanMessage(content=synthesis_prompt)])
@@ -407,7 +466,7 @@ def create_esg_agent(session_id: str, vector_store: Chroma, company_name: str) -
     return agent
 
 # 这个函数旨在执行一个全面的 ESG 分析，它首先尝试使用 LangGraph 工作流，如果工作流创建或执行失败，则回退到基于代理（Agent）的分析
-async def comprehensive_esg_analysis(session_id: str, vector_store: Chroma, company_name: str) -> Dict[str, Any]:
+async def comprehensive_esg_analysis(session_id: str, vector_store: Chroma, company_name: str, output_language: str = "en") -> Dict[str, Any]:
     """Execute comprehensive ESG analysis using LangGraph workflow"""
     
     # Create the analysis graph
@@ -418,7 +477,7 @@ async def comprehensive_esg_analysis(session_id: str, vector_store: Chroma, comp
         print(f"Error creating LangGraph workflow: {e}")
         # Fallback to agent-based analysis
         #  LangGraph 工作流创建失败，函数会立即回退到调用一个名为 fallback_agent_analysis 的异步函数
-        return await fallback_agent_analysis(session_id, vector_store, company_name)
+        return await fallback_agent_analysis(session_id, vector_store, company_name,output_language)
     
     # Create agent for fallback
     agent = create_esg_agent(session_id, vector_store, company_name)
@@ -437,7 +496,8 @@ async def comprehensive_esg_analysis(session_id: str, vector_store: Chroma, comp
         final_synthesis="",
         iteration=0,
         max_iterations=3,
-        error=None
+        error=None,
+        output_language=output_language
     )
     
     try:
@@ -468,32 +528,48 @@ async def comprehensive_esg_analysis(session_id: str, vector_store: Chroma, comp
     except Exception as e:
         print(f"LangGraph workflow failed: {str(e)}")
         print("Falling back to agent-based analysis...")
-        return await fallback_agent_analysis(session_id, vector_store, company_name)
+        return await fallback_agent_analysis(session_id, vector_store, company_name,output_language)
 
-async def fallback_agent_analysis(session_id: str, vector_store: Chroma, company_name: str) -> Dict[str, Any]:
+async def fallback_agent_analysis(session_id: str, vector_store: Chroma, company_name: str, output_language: str = "en") -> Dict[str, Any]:
     """Fallback to agent-based analysis if LangGraph fails"""
     
     agent = create_esg_agent(session_id, vector_store, company_name)
     agent_executors[session_id] = agent
     
     document_analysis = agent.run(
-        "Perform a detailed analysis of the ESG document. "
-        "Identify specific greenwashing indicators, vague language, "
-        "unsubstantiated claims, and missing evidence."
+        f"Perform a detailed analysis of the ESG document. "
+        f"Identify specific greenwashing indicators, vague language, "
+        f"unsubstantiated claims, and missing evidence.\n\n"
+        f"Please respond in {output_language}."
     )
     
     if company_name.lower() in VALID_COMPANIES:
         news_validation = agent.run(
             f"Validate the ESG claims found in the document analysis against "
-            f"recent news articles for {company_name}."
+            f"recent news articles for {company_name}.\n\n"
+            f"Please respond in {output_language}."
         )
     else:
-        news_validation = "Company name not recognized. News validation skipped."
+        news_validation = agent.run(
+            f"Validate the ESG claims found in the document analysis against "
+            f"recent news articles for {company_name}.\n\n"
+            f"Please respond in {output_language}."
+        )
+        news_validation = (
+            f"[Warning] Company '{company_name}' is not in the whitelist. "
+            f"Proceeding with forced news validation.\n\n{news_validation}"
+        )
 
         # 新增Wikirate验证
         wikirate_validation = agent.run(
             f"Use the Wikirate database to verify ESG metrics and claims for {company_name}. "
-            f"Compare document data with verified Wikirate database entries."
+            f"Compare document data with verified Wikirate database entries.\n\n"
+            f"Please respond in {output_language}."
+        )
+    if company_name.lower() not in VALID_COMPANIES:
+        wikirate_validation = (
+            f"[Warning] Company '{company_name}' is not in the whitelist. "
+            f"Proceeding with forced Wikirate validation.\n\n{wikirate_validation}"
         )
 
 
@@ -501,12 +577,14 @@ async def fallback_agent_analysis(session_id: str, vector_store: Chroma, company
     metrics_calculation = agent.run(
         f"Calculate detailed greenwashing metrics based on the analysis: "
         f"Document Analysis: {document_analysis}\n"
-        f"News Validation: {news_validation}"
+        f"News Validation: {news_validation}\n\n"
+        f"Please respond in {output_language}."
     )
     
     final_synthesis = agent.run(
         f"Create a comprehensive ESG greenwashing assessment report "
-        f"synthesizing all findings from the analysis."
+        f"synthesizing all findings from the analysis.\n\n"
+        f"Please respond in {output_language}."
     )
     
     return {

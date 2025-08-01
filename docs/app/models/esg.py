@@ -19,6 +19,7 @@ class WikirateValidationResult(BaseModel):
 class ESGAnalysisState(TypedDict):
     company_name: str
     vector_store: Any
+    output_language: str
     initial_thoughts: List[str]
     selected_thoughts: List[str]
     document_analysis: List[str]

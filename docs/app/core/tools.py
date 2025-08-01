@@ -9,6 +9,7 @@ import json
 import requests
 import cloudscraper
 from app.config import WIKIRATE_API_KEY
+from app.core.utils import search_and_filter_news  # 按你放的位置
 
 # get_company_name
 from wikirate4py import API
@@ -509,42 +510,39 @@ class NewsValidationTool(BaseTool):
 
     def _run(self, claims: str) -> str:
         try:
-            bbc_articles = bbc_search(self.company_name)
-            cnn_articles = cnn_search(self.company_name)
-            news_content = []
-            if bbc_articles:
-                for title, file_path in bbc_articles.items():
-                    try:
-                        loader = UnstructuredHTMLLoader(file_path)
-                        docs = loader.load()
-                        news_content.extend([doc.page_content for doc in docs])
-                    except Exception as e:
-                        print(f"Error loading BBC article {title}: {e}")
-            if cnn_articles:
-                for title, file_path in cnn_articles.items():
-                    try:
-                        loader = UnstructuredHTMLLoader(file_path)
-                        docs = loader.load()
-                        news_content.extend([doc.page_content for doc in docs])
-                    except Exception as e:
-                        print(f"Error loading CNN article {title}: {e}")
+            news_content = search_and_filter_news(self.company_name, max_articles=5)
             if not news_content:
-                return "No recent news articles found for validation"
-            news_text = "\n\n".join(news_content[:5])
+                    return "No relevant news articles found for this company"
+            news_text = "\n\n".join(news_content)
             validation_prompt = f"""
-            Validate the following ESG claims against recent news articles:
+            You are an expert ESG validation analyst.
 
-            Claims to validate: {claims}
+            Your task is to assess how well each ESG claim is reflected in the following news articles.
 
-            News articles: {news_text}
+            ### Instructions:
+            - You may consider a claim "Supported" even if the wording is different, as long as the topic is thematically relevant (e.g., fossil fuel protest, climate goals, ESG disclosures).
+            - If the article mentions related controversies, criticisms, or policy issues, these may indicate indirect validation.
+            - If truly nothing aligns, return "Not mentioned".
 
-            Determine if the claims are:
-            1. Supported by news evidence
-            2. Contradicted by news evidence
-            3. Not mentioned in news sources
+            ### Definitions:
+            - **Supported**: Clearly backed by the article.
+            - **Contradicted**: Article undermines or denies the claim.
+            - **Indicated**: Thematically aligned or implied support.
+            - **Not mentioned**: No relevant or indirect content found.
 
-            Provide specific quotes and sources where relevant.
+            ### Claims:
+            {claims}
+
+            ### News Articles:
+            {news_text}
+
+            For each claim, respond with:
+            1. **Status**: Supported / Contradicted / Indicated / Not mentioned  
+            2. **Reasoning**: Why this status was chosen  
+            3. **Quote(s)**: Cite supporting or contradicting content if available  
             """
+
+
             response = llm.invoke([HumanMessage(content=validation_prompt)])
             return response.content
         except Exception as e:
