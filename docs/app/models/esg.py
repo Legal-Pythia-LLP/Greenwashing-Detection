@@ -19,11 +19,12 @@ class WikirateValidationResult(BaseModel):
 class ESGAnalysisState(TypedDict):
     company_name: str
     vector_store: Any
+    output_language: str
     initial_thoughts: List[str]
     selected_thoughts: List[str]
-    document_analysis: str
+    document_analysis: List[str]
     news_validation: str
-    wikirate_validation: str  # 新增Wikirate验证结果
+    wikirate_validation: str
     metrics: str
     final_synthesis: str
     iteration: int

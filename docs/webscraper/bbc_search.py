@@ -1,5 +1,6 @@
 import os
 import shutil
+import hashlib
 from datetime import datetime, timedelta
 from typing import Dict
 import requests
@@ -18,25 +19,37 @@ def date_calculation(delta: int) -> datetime:
 def url_download(links: dict, directory: str = "downloads") -> Dict[str, str]:
     """
     下载所有链接到本地目录，返回标题到本地文件路径的映射。
+    会自动处理文件名重复、非法字符问题，避免每次清空目录。
     """
-    if os.path.isdir(directory):
-        shutil.rmtree(directory)
-        print(f"Directory '{directory}' has been deleted.")
     os.makedirs(directory, exist_ok=True)
     downloads_dictionary = {}
+
     try:
         for title, url in links.items():
-            # 移除特殊字符
-            new_title = "".join(char for char in title if char.isalnum())
-            path = os.path.join(directory, f"{new_title}.html")
+            # 标题转安全文件名 + 唯一哈希
+            safe_title = "".join(char for char in title if char.isalnum())
+            if not safe_title:
+                safe_title = "article"
+            title_hash = hashlib.md5(title.encode("utf-8")).hexdigest()[:8]
+            filename = f"{safe_title[:50]}_{title_hash}.html"
+            path = os.path.join(directory, filename)
+
+            # 避免重复下载
+            if os.path.exists(path):
+                downloads_dictionary[title] = path
+                continue
+
             response = requests.get(url, timeout=10)
             with open(path, "w", encoding="utf-8") as f:
                 f.write(response.text)
+
             downloads_dictionary[title] = path
+
     except requests.exceptions.RequestException as e:
-        raise f"Request failed: {e}"
+        raise Exception(f"Request failed: {e}")
     except OSError as e:
-        raise f"File saving error: {e}"
+        raise Exception(f"File saving error: {e}")
+
     return downloads_dictionary
 
 
@@ -69,27 +82,28 @@ def bbc_search(name: str) -> Dict[str, str]:
     """
     BBC 新闻爬虫，搜索与 name 相关的新闻，下载并返回本地路径。
     """
-    depth = 10
+    depth = 50  # ✅ 提高抓取数量上限
     delta = 365 * 2
     last_date = date_calculation(delta)
     web_dictionary = {}
     page_count = 1
     next_page = True
     limit = False
+
     while next_page:
         source = f"https://www.bbc.co.uk/search?q={name}&d=NEWS_PS&page={page_count}"
         response = requests.get(source)
-        if page_count > 29:
-            break
         response.encoding = "utf-8"
         soup = BeautifulSoup(response.text, "html.parser")
         promo_articles = soup.find_all("div", attrs={"data-testid": "default-promo"})
+
         if not promo_articles:
             break
+
         for article in promo_articles:
             title_struct = article.find("p")
             if not title_struct:
-                continue  # Skips article if there is no title
+                continue
             title = title_struct.get_text(strip=True)
             a_tag = article.find("a")
             if not a_tag:
@@ -103,23 +117,28 @@ def bbc_search(name: str) -> Dict[str, str]:
             article_date = container.find("span").text
             if not article_date:
                 continue
+
             try:
                 date = date_conversion(article_date)
             except:
-                continue  # Skips the unnecessary part of the code
+                continue
+
             size = len(web_dictionary) + 1 <= depth
             if url_validity(link) and size and date >= last_date:
                 web_dictionary[title] = link
             elif not size:
                 limit = True
                 break
-        if limit:  # Checks if we have reached the 10 page limit, speeding up runtime
+
+        if limit:
             next_page = False
         else:
             page_count += 1
-    local_file_dict = {}
+            # ✅ 可选页数限制，保守起见设 50 页
+            if page_count > 50:
+                break
+
     if len(web_dictionary) != 0:
-        local_file_dict = url_download(web_dictionary)
-        return local_file_dict
+        return url_download(web_dictionary)
     else:
-        return None 
+        return None
