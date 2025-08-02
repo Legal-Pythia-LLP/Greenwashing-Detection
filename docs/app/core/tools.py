@@ -21,7 +21,7 @@ import re
 import multiprocessing
 
 # 名字模糊比對
-# ✅ 自訂 normalization 方法（模仿 NameMatcher transform=True）
+# 自訂 normalization 方法（模仿 NameMatcher transform=True）
 def normalize_name(name: str) -> str:
     name = name.lower()
     name = re.sub(r'[^a-z0-9\s]', '', name)  # 移除標點符號
@@ -35,7 +35,7 @@ def get_isin_count(company):
         isin_list = isin if isinstance(isin, list) else []
         return len(isin_list)
     except Exception as e:
-        print(f"⚠️ 無法處理公司 {company}: {e}")
+        print(f"無法處理公司 {company}: {e}")
         return 0
 
 
@@ -45,7 +45,7 @@ class WikirateClient:
     def __init__(self, api_key: Optional[str] = None):
         self.base_url = "https://wikirate.org"
         self.api_key = api_key
-        self.session = cloudscraper.create_scraper(  # ✅ 替代 requests
+        self.session = cloudscraper.create_scraper(  # 替代 requests
             browser={
                 'browser': 'chrome',
                 'platform': 'windows',
@@ -119,7 +119,7 @@ class WikirateClient:
             # print(f"[Wikirate] 搜尋時發生錯誤: {e}")
             return {}
 
-    # ✅ 主函數：根據輸入名稱模糊比對，並根據 ISIN 數量選擇最佳匹配
+    # 主函數：根據輸入名稱模糊比對，並根據 ISIN 數量選擇最佳匹配
     def find_best_matching_company(self, input_name: str) -> str:
         # self.parallel_fetch(num_workers=6)
 
@@ -137,16 +137,16 @@ class WikirateClient:
                         'isin_count': int(row['isin_count'])
                     })
         except FileNotFoundError:
-            print(f"❌ 找不到公司数据文件: {csv_path}")
+            print(f"找不到公司数据文件: {csv_path}")
             return None
         
         keyword = input_name.lower()
         filtered_companies = [c for c in wikirate_companies if keyword in c['name'].lower()]
         if not filtered_companies:
-            print("❌ 找不到任何名稱包含關鍵字的公司")
+            print("找不到任何名稱包含關鍵字的公司")
             return None
 
-        # ✅ 印出所有符合條件的公司名稱
+        # 印出所有符合條件的公司名稱
         print("🔍 找到以下包含關鍵字的公司：")
         for c in filtered_companies:
             print(f" - {c['name']}")
@@ -180,8 +180,8 @@ class WikirateClient:
         if matches.empty:
             return None
 
-        # 🧪 印出所有匹配的名稱與分數
-        print("🧪 所有匹配結果：")
+        # 印出所有匹配的名稱與分數
+        print("所有匹配結果：")
         results = []
         for i in range(5):
             match_name_col = f'match_name_{i}'
@@ -192,7 +192,7 @@ class WikirateClient:
                 if pd.notna(match_name):
                     normalized = normalize_name(match_name)
                     isin_count = normalized_map.get(normalized, {}).get('isin_count', 0)
-                    print(f"{i + 1}. {match_name}  👉 分數: {score:.2f}  🆔 ISIN數量: {isin_count}")
+                    print(f"{i + 1}. {match_name}  分數: {score:.2f}  ISIN數量: {isin_count}")
                     results.append((normalized, score))
 
         if not results:
