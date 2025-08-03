@@ -9,6 +9,7 @@ import json
 import requests
 import cloudscraper
 from app.config import WIKIRATE_API_KEY
+from app.core.utils import search_and_filter_news  # 按你放的位置
 
 # get_company_name
 from wikirate4py import API
@@ -126,7 +127,7 @@ class WikirateClient:
         # 加载公司数据
         csv_path = "wikirate_companies_all.csv"
         wikirate_companies = []
-        
+
         try:
             with open(csv_path, 'r', encoding='utf-8') as f:
                 reader = csv.DictReader(f)
@@ -139,7 +140,7 @@ class WikirateClient:
         except FileNotFoundError:
             print(f"找不到公司数据文件: {csv_path}")
             return None
-        
+
         keyword = input_name.lower()
         filtered_companies = [c for c in wikirate_companies if keyword in c['name'].lower()]
         if not filtered_companies:
@@ -214,21 +215,21 @@ class WikirateClient:
         """获取公司的ESG指标数据，使用wikirate4py API"""
         try:
             from wikirate4py import API
-            
+
             # 初始化wikirate4py API
             api = API(self.api_key)
-            
+
             # 获取公司信息
             company = api.get_company(company_name)
             if not company:
                 return {"error": f"Company '{company_name}' not found"}
-            
+
             # 分页获取所有答案
             all_answers = []
             limit = 10
             offset = 0
             max_total = 20  # 最多获取200条记录
-            
+
             while len(all_answers) < max_total:
                 batch = api.get_answers(company=company.name, limit=min(limit, max_total - len(all_answers)), offset=offset)
                 if not batch:
@@ -237,12 +238,12 @@ class WikirateClient:
                 if len(batch) < limit or len(all_answers) >= max_total:
                     break
                 offset += limit
-            
+
             # 筛选ESG相关指标
             esg_topics = ["environment", "social", "governance"]
             esg_metrics = set()
             metric_cache = {}
-            
+
             # 获取所有指标的ESG主题和单位信息
             for answer in all_answers:
                 metric_name = answer.metric
@@ -259,10 +260,10 @@ class WikirateClient:
                                 topics.append(t.lower())
                             elif isinstance(t, dict) and 'name' in t:
                                 topics.append(t['name'].lower())
-                        
+
                         # 获取单位信息
                         unit = getattr(metric_obj, 'unit', None)
-                        
+
                         metric_cache[metric_name] = {
                             'topics': topics,
                             'unit': unit
@@ -275,10 +276,10 @@ class WikirateClient:
                             'topics': topics,
                             'unit': unit
                         }
-                
+
                 if any(topic in topics for topic in esg_topics):
                     esg_metrics.add(metric_name)
-            
+
             # 构建返回结果
             results = {
                 "company_name": company_name,
@@ -286,7 +287,7 @@ class WikirateClient:
                 "esg_metrics_count": len(esg_metrics),
                 "esg_data": []
             }
-            
+
             # 提取ESG相关指标的数据
             for answer in all_answers:
                 if answer.metric in esg_metrics:
@@ -300,9 +301,9 @@ class WikirateClient:
                         # "topics": metric_cache.get(answer.metric, {}).get('topics', [])
                     }
                     results["esg_data"].append(record)
-            
+
             return results
-            
+
         except Exception as e:
             print(f"Error getting company metrics: {e}")
             return {"error": str(e)}
@@ -418,30 +419,85 @@ class ESGDocumentAnalysisTool(BaseTool):
         super().__init__()
         self.vector_store = vector_store
 
-    def _run(self, query: str) -> str:
+    def _run(self, query: str) -> list:
         try:
             docs = self.vector_store.similarity_search(query, k=10)
             context = "\n\n".join([doc.page_content for doc in docs])
             analysis_prompt = f"""
-            Analyze the following ESG document content for greenwashing indicators:
+            Analyze the following ESG document content to obtain potential evidence of greenwashing using the following thought. There may be multiple pieces of potential evidence in content. Please identify all potential evidence as much as possible.:
 
             Content: {context}
 
-            Query: {query}
+            Thought: {query}
 
-            Look for:
-            1. Vague or unsubstantiated claims
-            2. Lack of specific metrics or targets
-            3. Misleading terminology
-            4. Cherry-picked data
-            5. Absence of third-party verification
+            For each potential evidence, provide:
+            - Quotation of the corresponding content in the original text
+            - Specific explanations for potential greenwashing
+            - Indicate whether further verification using external data is required. If verification is required, describe the specific verification method, including what data is needed.
+            - A greenwashing likelihood score (0-10, where 0 means no likelihood and 10 means very high likelihood)
 
-            Provide specific evidence and scoring rationale.
+            Please format your response as a JSON list, where each element is a JSON object representing a potential greenwashing evidence. Each evidence object should contain the following key-value pairs:
+            * "quotation" (string): A quote of the corresponding suspicious content from the original text.
+            * "explanation" (string): A detailed explanation of why this content represents potential greenwashing.
+            * "greenwashing_likelihood_score" (integer): An integer score from 0 to 10, indicating the likelihood of this being greenwashing.
+            * "verification_required" (boolean): Indicates whether further verification using external data is required (true/false).
+            * "verification_method" (string): If verification is required, describe the specific verification method and steps.
+            * "data_needed" (string): If verification is required, specify what external data is needed.
             """
+
             response = llm.invoke([HumanMessage(content=analysis_prompt)])
-            return response.content
+            # return response.content
+            raw_llm_content = response.content
+
+            # 使用正则表达式移除潜在的Markdown代码块包装
+            # 匹配开头```json\n 和 结尾的 ```（可能是\n```）
+            cleaned_llm_content = re.sub(r'```json\n(.*)```', r'\1', raw_llm_content, flags=re.DOTALL)
+            # 进一步清理可能只剩下 ```json 和 ``` 的情况
+            cleaned_llm_content = cleaned_llm_content.replace('```json', '').replace('```', '').strip()
+            try:
+                # 尝试解析LLM返回的JSON字符串为Python列表对象
+                parsed_json_response = json.loads(cleaned_llm_content)
+
+                # 确保解析后的结果确实是一个列表
+                if isinstance(parsed_json_response, list):
+                    return parsed_json_response  # <-- 直接返回解析后的列表
+                else:
+                    # 如果LLM没有返回列表，而是其他JSON类型（比如单个对象），可以抛出错误或根据需要处理
+                    return [
+                        {
+                            "quotation": "",
+                            "explanation": f"Error: LLM returned JSON but not a list. Content: {response.content}",
+                            "verification_required": False,
+                            "verification_method": "",
+                            "data_needed": ""
+                        }
+                    ]  # 返回一个包含错误信息的列表
+
+            except json.JSONDecodeError as json_e:
+                # 如果LLM没有返回有效的JSON，捕获错误
+                return [
+                    {
+                        "quotation": "",
+                        "explanation": f"Error: LLM did not return valid JSON. Original content: {response.content[:500]}... Error: {str(json_e)}",
+                        "verification_required": False,
+                        "verification_method": "",
+                        "data_needed": ""
+                    }
+                ]  # 返回一个包含错误信息的列表
+
         except Exception as e:
-            return f"Error in document analysis: {str(e)}"
+            # 捕获其他任何异常
+            return [
+                {
+                    "quotation": "",
+                    "explanation": f"An unexpected error occurred during document analysis: {str(e)}",
+                    "verification_required": False,
+                    "verification_method": "",
+                    "data_needed": ""
+                }
+            ]  # 返回一个包含错误信息的列表
+
+
 
 class NewsValidationTool(BaseTool):
     name: str = "news_validation"
@@ -454,97 +510,111 @@ class NewsValidationTool(BaseTool):
 
     def _run(self, claims: str) -> str:
         try:
-            bbc_articles = bbc_search(self.company_name)
-            cnn_articles = cnn_search(self.company_name)
-            news_content = []
-            if bbc_articles:
-                for title, file_path in bbc_articles.items():
-                    try:
-                        loader = UnstructuredHTMLLoader(file_path)
-                        docs = loader.load()
-                        news_content.extend([doc.page_content for doc in docs])
-                    except Exception as e:
-                        print(f"Error loading BBC article {title}: {e}")
-            if cnn_articles:
-                for title, file_path in cnn_articles.items():
-                    try:
-                        loader = UnstructuredHTMLLoader(file_path)
-                        docs = loader.load()
-                        news_content.extend([doc.page_content for doc in docs])
-                    except Exception as e:
-                        print(f"Error loading CNN article {title}: {e}")
+            # 👇 修改：让搜索函数返回内容 + 标题
+            news_content, used_titles = search_and_filter_news(self.company_name, max_articles=10)
+
             if not news_content:
-                return "No recent news articles found for validation"
-            news_text = "\n\n".join(news_content[:5])
+                return "No relevant news articles found for this company"
+
+            # ✅ 打印使用到的新闻标题
+            print("[📰 使用的新闻文章]")
+            for idx, title in enumerate(used_titles, start=1):
+                print(f"{idx}. {title}")
+
+            news_text = "\n\n".join(news_content)
+
             validation_prompt = f"""
-            Validate the following ESG claims against recent news articles:
+            You are an expert ESG validation analyst.
 
-            Claims to validate: {claims}
+            Your task is to assess how well each ESG claim is reflected in the following news articles.
 
-            News articles: {news_text}
+            ---
 
-            Determine if the claims are:
-            1. Supported by news evidence
-            2. Contradicted by news evidence
-            3. Not mentioned in news sources
+            Instructions:
+            - If the article directly supports or contradicts a claim, label it as **Supported** or **Contradicted**
+            - If the article covers related topics (e.g., fossil fuel protests, ESG controversies, financing debates, policy discussions), even without explicitly restating the claim, label it as **Indicated**
+            - If there's truly no connection, mark it as **Not mentioned**
 
-            Provide specific quotes and sources where relevant.
+            ---
+
+            Definitions:
+            - **Supported**: Clearly confirms the claim
+            - **Contradicted**: Clearly denies or disproves the claim
+            - **Indicated**: Topic is related, mentioned, or thematically aligned
+            - **Not mentioned**: No relevant or related discussion
+
+            ---
+
+            Claims:
+            {claims}
+
+            News Articles:
+            {news_text}
+
+            For each claim, respond with:
+            1. **Status**: Supported / Contradicted / Indicated / Not mentioned  
+            2. **Reasoning**: Explain why you chose this status  
+            3. **Quote(s)**: Include any relevant quotes if applicable  
             """
+
+
+
             response = llm.invoke([HumanMessage(content=validation_prompt)])
             return response.content
+
         except Exception as e:
             return f"Error in news validation: {str(e)}"
 
+
+
 class ESGMetricsCalculatorTool(BaseTool):
     name: str = "esg_metrics_calculator"
-    description: str = "Calculates quantitative greenwashing metrics for visualization"
+    description: str = "Identify types of greenwashing and calculate a comprehensive greenwashing score"
 
-    def _run(self, analysis_text: str) -> str:
+    def _run(self, analysis_evidence: str) -> str:
+        """Calculate ESG metrics from analysis"""
         try:
             metrics_prompt = f"""
-            Based on the following ESG analysis, calculate specific greenwashing metrics:
+            Based on the following Greenwashing Evidence, Analyze the types of greenwashing present in this report and assign each type of greenwashing a probability score indicating the likelihood of its presence. The higher the score, the greater the likelihood of that type of greenwashing being present. The score range is 0–10. :
+            At the same time, a comprehensive greenwashing score is calculated. The score range is also 0-10, and the higher the score, the greater the likelihood of greenwashing.
 
-            Analysis: {analysis_text}
+            Greenwashing Evidence: {analysis_evidence}
 
-            Calculate scores (0-100) for each metric:
-            1. Vague Language Score
-            2. Evidence Quality Score
-            3. Transparency Score
-            4. Measurability Score
-            5. Third-party Verification Score
+            Five types of greenwashing:
+            1. Vague or unsubstantiated claims
+            2. Lack of specific metrics or targets
+            3. Misleading terminology
+            4. Cherry-picked data
+            5. Absence of third-party verification
 
-            Format as JSON:
+
+            Format the output strictly as JSON:
             {{
-                "vague_language": {{
-                    "score": 0-100,
-                    "evidence": "specific examples",
-                    "contains_percentages": true/false
+                "Vague or unsubstantiated claims": {{
+                    "score": 0-10,
                 }},
-                "evidence_quality": {{
-                    "score": 0-100,
-                    "evidence": "specific examples",
-                    "contains_percentages": true/false
+                "Lack of specific metrics or targets": {{
+                    "score": 0-10,
                 }},
-                "transparency": {{
-                    "score": 0-100,
-                    "evidence": "specific examples",
-                    "contains_percentages": true/false
+                "Misleading terminology": {{
+                    "score": 0-10,
                 }},
-                "measurability": {{
-                    "score": 0-100,
-                    "evidence": "specific examples",
-                    "contains_percentages": true/false
+                "Cherry-picked data": {{
+                    "score": 0-10, 
                 }},
-                "third_party_verification": {{
-                    "score": 0-100,
-                    "evidence": "specific examples",
-                    "contains_percentages": true/false
+                "Absence of third-party verification": {{
+                    "score": 0-10,
+                }}
+                ""overall_greenwashing_score"": {{
+                    "score": 0-10,
                 }}
             }}
 
-            Also provide an overall greenwashing score (0-10).
+
             """
+
             response = llm.invoke([HumanMessage(content=metrics_prompt)])
             return response.content
+
         except Exception as e:
-            return f"Error calculating metrics: {str(e)}" 
+            return f"Error calculating metrics: {str(e)}"
