@@ -1,26 +1,29 @@
-fastapi==0.110.1
-uvicorn==0.30.1
-python-dotenv==1.0.1
-starlette==0.37.2
-python-multipart==0.0.9
-requests==2.32.2
+﻿# --- Web framework ---
+fastapi
+uvicorn
+python-dotenv
+starlette
+python-multipart
+requests
 
-langchain==0.1.16
-langchain-openai==0.1.3
-langchain-community==0.0.37
-langgraph==0.0.40
-transformers==4.41.2
-torch==2.3.0
+# --- LLM and AI tools ---
+langchain
+langchain-openai
+langchain-community
+langgraph
+transformers
+torch
 
-pandas==2.2.2
-beautifulsoup4==4.12.3
-chromadb==0.4.24
-pypdf==4.2.0
+# --- Data processing ---
+pandas
+beautifulsoup4
+chromadb
+pypdf
 
-paddlepaddle==2.6.2
-paddleocr==2.9.1
-opencv-python==4.10.0.84
-pytesseract==0.3.10
-Pillow==10.3.0
-
-numpy==1.26.4
+# --- OCR dependencies ---
+paddlepaddle>=2.6,<2.7
+paddleocr>=2.9,<3.0
+opencv-python>=4.10,<4.11
+pytesseract
+Pillow
+numpy>=1.25,<1.27
