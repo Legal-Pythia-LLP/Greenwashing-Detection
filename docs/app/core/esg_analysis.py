@@ -3,6 +3,7 @@ from app.core.tools import ESGDocumentAnalysisTool, NewsValidationTool, ESGMetri
 from app.core.llm import llm, climatebert_tokenizer, climatebert_model
 from app.config import VALID_COMPANIES
 from app.models import ESGAnalysisState
+from langgraph.graph import StateGraph, END
 from langchain.schema import HumanMessage
 from langchain_community.vectorstores import Chroma
 from langchain.agents import AgentExecutor
@@ -147,6 +148,29 @@ def perform_document_analysis(state: ESGAnalysisState) -> ESGAnalysisState:
     except Exception as e:
         state["error"] = f"Error in document analysis: {str(e)}"
         return state
+    
+def select_tools(state: ESGAnalysisState) -> str:
+    """
+    Decide which validation tool(s) to use.
+    Options: 'news_validation', 'wikirate_validation', 'both', 'none'
+    """
+    if state.get("error"):
+        return "none"
+
+    selected_tools = []
+
+    # 默认都启用（你可以在这里加判断逻辑）
+    selected_tools.append("news_validation")
+    #selected_tools.append("wikirate_validation")
+
+    if "news_validation" in selected_tools and "wikirate_validation" in selected_tools:
+        return "both"
+    elif "news_validation" in selected_tools:
+        return "news_validation"
+    elif "wikirate_validation" in selected_tools:
+        return "wikirate_validation"
+    else:
+        return "none"
 
 def validate_with_news(state: ESGAnalysisState) -> ESGAnalysisState:
     """Validate findings against news sources"""
@@ -195,7 +219,7 @@ def validate_with_wikirate(state: ESGAnalysisState) -> ESGAnalysisState:
 
     if state.get("error"):
         return state
-    
+
     company_name = state.get("company_name", "")
     document_analysis = state.get("document_analysis", "")
     lower_name = company_name.lower()
@@ -381,9 +405,6 @@ def check_completion(state: ESGAnalysisState) -> str:
 # Create LangGraph workflow
 def create_esg_analysis_graph():
     """Create the ESG analysis workflow using LangGraph"""
-    
-    # Initialize the graph
-    from langgraph.graph import StateGraph, END
     workflow = StateGraph(ESGAnalysisState)
     
     # Add nodes
@@ -391,21 +412,38 @@ def create_esg_analysis_graph():
     # workflow.add_node("evaluate_thoughts", evaluate_and_select_thoughts)
     workflow.add_node("document_analysis", perform_document_analysis)
     workflow.add_node("news_validation", validate_with_news)
-    workflow.add_node("wikirate_validation", validate_with_wikirate)  # 新增节点
+    workflow.add_node("wikirate_validation", validate_with_wikirate)
     workflow.add_node("calculate_metrics", calculate_metrics)
     workflow.add_node("final_synthesis", synthesize_final_report)
     
     # Add edges
     workflow.add_edge("generate_thoughts", "document_analysis")
     # workflow.add_edge("evaluate_thoughts", "document_analysis")
-    workflow.add_edge("document_analysis", "news_validation")
-    workflow.add_edge("news_validation", "wikirate_validation")  # 新增边
+
+    workflow.add_conditional_edges(
+        "document_analysis",
+        select_tools,
+        {
+            "news_validation": "news_validation",
+            "wikirate_validation": "wikirate_validation",
+            "both": "news_validation",
+            "none": "calculate_metrics"
+        }
+    )
+
+    workflow.add_conditional_edges(
+        "news_validation",
+        lambda state: "wikirate_validation" if select_tools(state) == "both" else "calculate_metrics",
+        {
+            "wikirate_validation": "wikirate_validation",
+            "calculate_metrics": "calculate_metrics"
+        }
+    )
+
     workflow.add_edge("wikirate_validation", "calculate_metrics")
     workflow.add_edge("calculate_metrics", "final_synthesis")
-    
     # Set entry point
     workflow.set_entry_point("generate_thoughts")
-    
     # Add conditional edges for completion check
     workflow.add_conditional_edges(
         "final_synthesis",
@@ -416,7 +454,6 @@ def create_esg_analysis_graph():
             "continue": "generate_thoughts"
         }
     )
-    
     return workflow.compile()
 
 # Agent creation function
@@ -535,6 +572,7 @@ async def fallback_agent_analysis(session_id: str, vector_store: Chroma, company
     
     agent = create_esg_agent(session_id, vector_store, company_name)
     agent_executors[session_id] = agent
+    wikirate_validation = ""  # 避免未赋值
     
     document_analysis = agent.run(
         f"Perform a detailed analysis of the ESG document. "
