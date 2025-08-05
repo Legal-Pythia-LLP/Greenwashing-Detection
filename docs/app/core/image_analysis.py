@@ -22,7 +22,7 @@ def extract_text(image_path: str) -> str:
     主用 PaddleOCR，失败时回退 Tesseract
     """
     try:
-        results = ocr.ocr(image_path, cls=True)
+        results = ocr.ocr(image_path)
         lines = []
         for line in results:
             for box, (text, score) in line:

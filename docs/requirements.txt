@@ -1,28 +1,26 @@
-# --- Web 相关 ---
-fastapi
-uvicorn
-python-dotenv
-starlette
-python-multipart
-requests
+fastapi==0.110.1
+uvicorn==0.30.1
+python-dotenv==1.0.1
+starlette==0.37.2
+python-multipart==0.0.9
+requests==2.32.2
 
-# --- LLM 模块 ---
-langchain
-langchain-openai
-langchain-community
-langgraph
-transformers
-torch
+langchain==0.1.16
+langchain-openai==0.1.3
+langchain-community==0.0.37
+langgraph==0.0.40
+transformers==4.41.2
+torch==2.3.0
 
-# --- 数据处理 ---
-pandas
-beautifulsoup4
-chromadb
-pypdf
+pandas==2.2.2
+beautifulsoup4==4.12.3
+chromadb==0.4.24
+pypdf==4.2.0
 
-# --- OCR 相关 ---
-paddleocr>=2.6
-paddlepaddle>=2.4  # 可写死具体版本
-opencv-python
-pytesseract
-Pillow
+paddlepaddle==2.6.2
+paddleocr==2.9.1
+opencv-python==4.10.0.84
+pytesseract==0.3.10
+Pillow==10.3.0
+
+numpy==1.26.4
