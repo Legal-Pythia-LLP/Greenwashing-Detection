@@ -14,3 +14,8 @@ __pycache__/
 **/__pycache__/
 *.pyc
 *.pyo
+
+docs/tests/
+docs/PROJECT_STRUCTURE.md
+docs/PROJECT_OVERVIEW.md
+docs/WORKFLOW_OPTIMIZATION.md
