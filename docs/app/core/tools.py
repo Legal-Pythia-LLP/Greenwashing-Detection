@@ -9,6 +9,7 @@ import json
 import requests
 import cloudscraper
 from app.config import WIKIRATE_API_KEY
+from app.core.utils import search_and_filter_news  # 按你放的位置
 
 # get_company_name
 from wikirate4py import API
@@ -45,7 +46,7 @@ class WikirateClient:
     def __init__(self, api_key: Optional[str] = None):
         self.base_url = "https://wikirate.org"
         self.api_key = api_key
-        self.session = cloudscraper.create_scraper(
+        self.session = cloudscraper.create_scraper(  # 替代 requests
             browser={
                 'browser': 'chrome',
                 'platform': 'windows',
@@ -126,7 +127,7 @@ class WikirateClient:
         # 加载公司数据
         csv_path = "wikirate_companies_all.csv"
         wikirate_companies = []
-        
+
         try:
             with open(csv_path, 'r', encoding='utf-8') as f:
                 reader = csv.DictReader(f)
@@ -137,16 +138,16 @@ class WikirateClient:
                         'isin_count': int(row['isin_count'])
                     })
         except FileNotFoundError:
-            print(f"❌ 找不到公司数据文件: {csv_path}")
+            print(f"找不到公司数据文件: {csv_path}")
             return None
-        
+
         keyword = input_name.lower()
         filtered_companies = [c for c in wikirate_companies if keyword in c['name'].lower()]
         if not filtered_companies:
-            print("❌ 找不到任何名稱包含關鍵字的公司")
+            print("找不到任何名稱包含關鍵字的公司")
             return None
 
-        # ✅ 印出所有符合條件的公司名稱
+        # 印出所有符合條件的公司名稱
         print("🔍 找到以下包含關鍵字的公司：")
         for c in filtered_companies:
             print(f" - {c['name']}")
@@ -180,8 +181,8 @@ class WikirateClient:
         if matches.empty:
             return None
 
-        # 🧪 印出所有匹配的名稱與分數
-        print("🧪 所有匹配結果：")
+        # 印出所有匹配的名稱與分數
+        print("所有匹配結果：")
         results = []
         for i in range(5):
             match_name_col = f'match_name_{i}'
@@ -192,7 +193,7 @@ class WikirateClient:
                 if pd.notna(match_name):
                     normalized = normalize_name(match_name)
                     isin_count = normalized_map.get(normalized, {}).get('isin_count', 0)
-                    print(f"{i + 1}. {match_name}  👉 分數: {score:.2f}  🆔 ISIN數量: {isin_count}")
+                    print(f"{i + 1}. {match_name}  分數: {score:.2f}  ISIN數量: {isin_count}")
                     results.append((normalized, score))
 
         if not results:
@@ -214,21 +215,21 @@ class WikirateClient:
         """获取公司的ESG指标数据，使用wikirate4py API"""
         try:
             from wikirate4py import API
-            
+
             # 初始化wikirate4py API
             api = API(self.api_key)
-            
+
             # 获取公司信息
             company = api.get_company(company_name)
             if not company:
                 return {"error": f"Company '{company_name}' not found"}
-            
+
             # 分页获取所有答案
             all_answers = []
             limit = 10
             offset = 0
             max_total = 20  # 最多获取200条记录
-            
+
             while len(all_answers) < max_total:
                 batch = api.get_answers(company=company.name, limit=min(limit, max_total - len(all_answers)), offset=offset)
                 if not batch:
@@ -237,12 +238,12 @@ class WikirateClient:
                 if len(batch) < limit or len(all_answers) >= max_total:
                     break
                 offset += limit
-            
+
             # 筛选ESG相关指标
             esg_topics = ["environment", "social", "governance"]
             esg_metrics = set()
             metric_cache = {}
-            
+
             # 获取所有指标的ESG主题和单位信息
             for answer in all_answers:
                 metric_name = answer.metric
@@ -259,10 +260,10 @@ class WikirateClient:
                                 topics.append(t.lower())
                             elif isinstance(t, dict) and 'name' in t:
                                 topics.append(t['name'].lower())
-                        
+
                         # 获取单位信息
                         unit = getattr(metric_obj, 'unit', None)
-                        
+
                         metric_cache[metric_name] = {
                             'topics': topics,
                             'unit': unit
@@ -275,10 +276,10 @@ class WikirateClient:
                             'topics': topics,
                             'unit': unit
                         }
-                
+
                 if any(topic in topics for topic in esg_topics):
                     esg_metrics.add(metric_name)
-            
+
             # 构建返回结果
             results = {
                 "company_name": company_name,
@@ -286,7 +287,7 @@ class WikirateClient:
                 "esg_metrics_count": len(esg_metrics),
                 "esg_data": []
             }
-            
+
             # 提取ESG相关指标的数据
             for answer in all_answers:
                 if answer.metric in esg_metrics:
@@ -300,9 +301,9 @@ class WikirateClient:
                         # "topics": metric_cache.get(answer.metric, {}).get('topics', [])
                     }
                     results["esg_data"].append(record)
-            
+
             return results
-            
+
         except Exception as e:
             print(f"Error getting company metrics: {e}")
             return {"error": str(e)}
@@ -338,66 +339,76 @@ class WikirateValidationTool(BaseTool):
     def _run(self, extracted_metrics: str) -> str:
         """验证提取的ESG指标与Wikirate数据库的一致性"""
         try:
-            validation_results = {
-                "company_found": False,
-                "metrics_verified": {},
-                "discrepancies": [],
-                "verification_score": 0.0
-            }
+            # validation_results = {
+            #     "company_found": False,
+            #     "metrics_verified": {},
+            #     "discrepancies": [],
+            #     "verification_score": 0.0
+            # }
 
             # 根據輸入名稱模糊比對，並根據 ISIN 數量選擇最佳匹配
             self.company_name = self.wikirate_client.find_best_matching_company(self.company_name)
 
             if self.company_name:
-                validation_results["company_found"] = True
+                # validation_results["company_found"] = True
 
                 # 获取公司的ESG指标
                 metrics_data = self.wikirate_client.get_company_metrics(self.company_name)
 
                 if "error" not in metrics_data:
-                    validation_results["metrics_verified"] = metrics_data
+                    # validation_results["metrics_verified"] = metrics_data
 
-                    # 分析提取的指标与Wikirate数据的对比
+
                     analysis_prompt = f"""
-                    Compare the extracted ESG metrics from the document with Wikirate database data:
+                    You are an expert ESG validation analyst. 
 
-                    Extracted Metrics from Document: {extracted_metrics}
+                    Your task is to assess how well each ESG claim is reflected in the following Wikirate Database Data.
+            
+                    You need to analyze each claim as follows.
+                    
+                    Claims:{extracted_metrics}
 
                     Wikirate Database Data: {json.dumps(metrics_data, indent=2)}
 
-                    Analyze:
-                    1. Which metrics match between the document and Wikirate database?
-                    2. What discrepancies exist in values, methodologies, or reporting periods?
-                    3. Are there missing metrics that should be reported?
-                    4. How reliable are the document claims compared to verified Wikirate data?
-                    5. Calculate a verification score (0-100) based on data consistency.
+                    Instruction:
+                    - If the ESG data provided directly proves that the statement is true, thereby refuting or partially refuting the greenwashing allegation, mark it as “Refuted”.
+                    - If the ESG data provided directly refutes the statement, thereby confirming or partially confirming the greenwashing allegation, mark it as “Supported”.
+                    - If the provided ESG data relates to relevant indicators or topics but is insufficient to directly verify or refute the greenwashing allegations in the quote, please mark it as “Mentioned.”
+                    - If the provided ESG data is unrelated to the quote and cannot be evaluated in any way, please mark it as “Not Mentioned.”
 
-                    Provide specific examples of matches and discrepancies.
+                    For each claim, respond with:
+                    1. **Status**: Supported / Contradicted / Indicated / Not mentioned  
+                    2. **Reasoning**: Explain why you chose this status  
+                    3. **news_quotation**: Include any relevant metrics from Wikirate Database Data if applicable  
+                    
                     """
 
                     response = llm.invoke([HumanMessage(content=analysis_prompt)])
 
-                    # 提取验证分数
-                    verification_text = response.content
+                    return response.content
 
-                    # 简单的分数提取逻辑（可以改进）
-                    if "verification score" in verification_text.lower():
-                        import re
-                        score_match = re.search(r'(\d+)(?:/100|\%)', verification_text)
-                        if score_match:
-                            validation_results["verification_score"] = float(score_match.group(1))
 
-                    return f"""
-                    Wikirate Validation Results:
-
-                    Company Found: {validation_results['company_found']}
-                    Verification Score: {validation_results['verification_score']}
-
-                    Detailed Analysis:
-                    {verification_text}
-
-                    Raw Wikirate Data Available: {len(metrics_data)} metrics found
-                    """
+                    # # 提取验证分数
+                    # verification_text = response.content
+                    #
+                    # # 简单的分数提取逻辑（可以改进）
+                    # if "verification score" in verification_text.lower():
+                    #     import re
+                    #     score_match = re.search(r'(\d+)(?:/100|\%)', verification_text)
+                    #     if score_match:
+                    #         validation_results["verification_score"] = float(score_match.group(1))
+                    #
+                    # return f"""
+                    # Wikirate Validation Results:
+                    #
+                    # Company Found: {validation_results['company_found']}
+                    # Verification Score: {validation_results['verification_score']}
+                    #
+                    # Detailed Analysis:
+                    # {verification_text}
+                    #
+                    # Raw Wikirate Data Available: {len(metrics_data)} metrics found
+                    # """
 
                 else:
                     return f"Company found in Wikirate but no ESG metrics available: {metrics_data['error']}"
@@ -509,46 +520,55 @@ class NewsValidationTool(BaseTool):
 
     def _run(self, claims: str) -> str:
         try:
-            bbc_articles = bbc_search(self.company_name)
-            cnn_articles = cnn_search(self.company_name)
-            news_content = []
-            if bbc_articles:
-                for title, file_path in bbc_articles.items():
-                    try:
-                        loader = UnstructuredHTMLLoader(file_path)
-                        docs = loader.load()
-                        news_content.extend([doc.page_content for doc in docs])
-                    except Exception as e:
-                        print(f"Error loading BBC article {title}: {e}")
-            if cnn_articles:
-                for title, file_path in cnn_articles.items():
-                    try:
-                        loader = UnstructuredHTMLLoader(file_path)
-                        docs = loader.load()
-                        news_content.extend([doc.page_content for doc in docs])
-                    except Exception as e:
-                        print(f"Error loading CNN article {title}: {e}")
+            # 👇 修改：让搜索函数返回内容 + 标题
+            news_content, used_titles = search_and_filter_news(self.company_name, max_articles=10)
+
             if not news_content:
-                return "No recent news articles found for validation"
-            news_text = "\n\n".join(news_content[:5])
+                return "No relevant news articles found for this company"
+
+            # 打印使用到的新闻标题
+            print("[ 使用的新闻文章]")
+            for idx, title in enumerate(used_titles, start=1):
+                print(f"{idx}. {title}")
+
+            news_text = "\n\n".join(news_content)
+
             validation_prompt = f"""
-            Validate the following ESG claims against recent news articles:
+            You are an expert ESG validation analyst. 
 
-            Claims to validate: {claims}
+            Your task is to assess how well each ESG claim is reflected in the following news articles.
+            
+            You need to analyze each claim as follows.
 
-            News articles: {news_text}
+            ---
 
-            Determine if the claims are:
-            1. Supported by news evidence
-            2. Contradicted by news evidence
-            3. Not mentioned in news sources
+            Instructions:
+            - If the news_text provided directly proves that the statement is true, thereby refuting or partially refuting the greenwashing allegation, mark it as “Refuted”.
+            - If the news_text provided directly refutes the statement, thereby confirming or partially confirming the greenwashing allegation, mark it as “Supported”.
+            - If the provided news_text relates to relevant indicators or topics but is insufficient to directly verify or refute the greenwashing allegations in the quote, please mark it as “Mentioned.”
+            - If the provided news_text is unrelated to the quote and cannot be evaluated in any way, please mark it as “Not Mentioned.”
 
-            Provide specific quotes and sources where relevant.
+            ---
+            
+            Claims:
+            {claims}
+
+            News Articles:
+            {news_text}
+
+            For each claim, respond with:
+            1. **Status**: Supported / Contradicted / Indicated / Not mentioned  
+            2. **Reasoning**: Explain why you chose this status  
+            3. **news_quotation**: Include any relevant quotation from news_text if applicable  
             """
+
+
             response = llm.invoke([HumanMessage(content=validation_prompt)])
             return response.content
+
         except Exception as e:
             return f"Error in news validation: {str(e)}"
+
 
 
 class ESGMetricsCalculatorTool(BaseTool):
@@ -559,7 +579,7 @@ class ESGMetricsCalculatorTool(BaseTool):
         """Calculate ESG metrics from analysis"""
         try:
             metrics_prompt = f"""
-            Based on the following Greenwashing Evidence, Analyze the types of greenwashing present in this report and assign each type of greenwashing a probability score indicating the likelihood of its presence. The higher the score, the greater the likelihood of that type of greenwashing being present. The score range is 0–10. :
+            Based on the following Greenwashing Evidence and the result of validation, comprehensively analyze the types of greenwashing present in this report and assign each type of greenwashing a probability score indicating the likelihood of its presence. The higher the score, the greater the likelihood of that type of greenwashing being present. The score range is 0–10. :
             At the same time, a comprehensive greenwashing score is calculated. The score range is also 0-10, and the higher the score, the greater the likelihood of greenwashing.
 
             Greenwashing Evidence: {analysis_evidence}

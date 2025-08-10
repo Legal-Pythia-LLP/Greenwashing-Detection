@@ -17,3 +17,6 @@ pypdf
 cloudscraper
 wikirate4py
 name_matching
+langdetect
+PyPDF2
+unstructured
