@@ -14,17 +14,16 @@ async def chat_with_agent(json_data: ChatBaseMessage) -> StreamingResponse:
     agent = agent_executors.get(session_id)
     if not agent:
         raise HTTPException(status_code=400, detail="No analysis session found")
-    # Create streaming response
+
     async def generate_response():
         try:
-            # Use agent to respond
             response = agent.run(user_message)
-            # Stream the response
             for chunk in response.split():
-                yield f"data: {chunk} \n\n"
+                yield chunk + " "
         except Exception as e:
-            yield f"data: Error: {str(e)}\n\n"
+            yield f"Error: {str(e)}"
+
     return StreamingResponse(
         generate_response(),
-        media_type="text/event-stream"
-    ) 
+        media_type="text/plain"
+    )

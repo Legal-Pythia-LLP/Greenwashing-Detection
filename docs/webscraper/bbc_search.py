@@ -82,7 +82,7 @@ def bbc_search(name: str) -> Dict[str, str]:
     """
     BBC 新闻爬虫，搜索与 name 相关的新闻，下载并返回本地路径。
     """
-    depth = 50  # ✅ 提高抓取数量上限
+    depth = 10
     delta = 365 * 2
     last_date = date_calculation(delta)
     web_dictionary = {}
@@ -134,8 +134,8 @@ def bbc_search(name: str) -> Dict[str, str]:
             next_page = False
         else:
             page_count += 1
-            # ✅ 可选页数限制，保守起见设 50 页
-            if page_count > 50:
+   
+            if page_count > 10:
                 break
 
     if len(web_dictionary) != 0:

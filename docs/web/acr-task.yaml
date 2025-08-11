@@ -1,0 +1,9 @@
+version: v1.1.0
+
+env:
+  - "DOCKER_BUILDKIT=1"
+
+steps:
+  - build: -t $Registry/demos/bma/web -f ./infra/Dockerfile .
+  - push:
+      - "$Registry/demos/bma/web"

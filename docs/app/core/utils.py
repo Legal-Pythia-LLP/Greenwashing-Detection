@@ -118,7 +118,16 @@ def search_and_filter_news(company_name: str, max_articles: int = 5) -> Tuple[Li
             print(f"[CNN error with alias '{alias}']: {e}")
 
     all_articles = list((bbc_articles or {}).items()) + list((cnn_articles or {}).items())
+    print(f"[DEBUG] 抓取到 BBC 文章数量: {len(bbc_articles)}")
+    for title in bbc_articles:
+        print(f"  [BBC] {title}")
+
+    print(f"[DEBUG] 抓取到 CNN 文章数量: {len(cnn_articles)}")
+    for title in cnn_articles:
+        print(f"  [CNN] {title}")
     filtered_articles = []
+
+    
 
     for title, file_path in all_articles[:100]:  # 最多评估前100篇
         try:

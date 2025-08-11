@@ -20,3 +20,4 @@ name_matching
 langdetect
 PyPDF2
 unstructured
+selenium
