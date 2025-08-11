@@ -45,3 +45,5 @@ Thumbs.db
 # 忽略图片缓存 / 临时测试图
 docs/*.png
 docs/*.jpg
+docs/venv310/
+docs/venv_new/

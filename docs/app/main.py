@@ -1,7 +1,6 @@
 from app.api.upload import router as upload_router
 from app.api.chat import router as chat_router
-from app.api.vision import router as vision_router
-from app.api.ocr_router import ocr_router 
+from app.api.ocr_router import router as ocr_router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -17,8 +16,7 @@ app.add_middleware(
 
 app.include_router(upload_router)
 app.include_router(chat_router)
-app.include_router(vision_router)
-app.include_router(ocr_router, prefix="/ocr")
+app.include_router(ocr_router)
 
 @app.get("/ping")
 def ping():
