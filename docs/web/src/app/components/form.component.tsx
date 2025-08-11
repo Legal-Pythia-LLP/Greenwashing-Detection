@@ -115,7 +115,7 @@ export function UploadForm() {
     queryKey: ['uploadFile', form.getValues()],
     queryFn: async () => {
       const values = form.getValues();
-      const data = await APIService.uploadFile(values.file, sessionId, values.language);
+      const data = await APIService.uploadFile(values.file, sessionId, values.language, true);
       
       // 处理新的响应结构
       const responseText = data.response || 'No response';

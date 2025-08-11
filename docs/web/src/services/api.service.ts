@@ -1,11 +1,27 @@
 import axios from 'axios';
+import { mockUploadResponse } from './mockData';
 
 // const api = axios.create({baseURL: 'https://api.hlt.prototypes.legalpythia.com'});
 // const api = axios.create({baseURL: 'https://api.bma.demos.legalpythia.com'});
 const api = axios.create({baseURL: 'http://127.0.0.1:8000'});
 
 export class APIService {
-  static async uploadFile(file: File, session_id: string, overrided_language?: string) {
+  static async uploadFile(
+    file: File,
+    session_id: string, 
+    overrided_language?: string,
+    forceMock = false
+  ) {
+    // 开发环境下或强制模拟时返回模拟数据
+    if (process.env.NODE_ENV === 'development' || forceMock) {
+      console.log('Returning mock data');
+      return {
+        ...mockUploadResponse,
+        session_id: session_id,
+        overrided_language: overrided_language || "en"
+      };
+    }
+
     const fd = new FormData();
     fd.append('file', file);
     fd.append('session_id', session_id);
