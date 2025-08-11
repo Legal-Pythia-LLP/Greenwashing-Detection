@@ -1,5 +1,5 @@
 'use client'
-import {UploadForm} from '@lp/features/upload/components/UploadForm'
+import {UploadContainer} from '@lp/features/upload/components'
 
 export default function TestUploadPage() {
   // 测试回调函数
@@ -12,7 +12,7 @@ export default function TestUploadPage() {
     <div className="p-8 bg-gray-50 min-h-screen">
       <h1 className="text-2xl font-bold mb-6">UploadForm 测试页面</h1>
       <div className="max-w-4xl mx-auto">
-        <UploadForm 
+        <UploadContainer 
           sessionId="test_session_123"
           onUploadSuccess={handleUploadSuccess}
         />

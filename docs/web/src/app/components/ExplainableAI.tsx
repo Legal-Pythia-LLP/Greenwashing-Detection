@@ -1,7 +1,7 @@
 'use client';
 
 import {useState, useEffect} from 'react';
-import {UploadForm} from '@lp/features/upload/components/UploadForm';
+import {UploadContainer} from '@lp/features/upload/components';
 import {ChatInterface} from '@lp/features/chat/components/ChatInterface';
 import {useHeader} from '@lp/components/header-context';
 
@@ -41,7 +41,7 @@ export function ExplainableAI() {
   return (
     <div className="container mx-auto p-4">
       {showUploadForm ? (
-        <UploadForm 
+        <UploadContainer
           sessionId={sessionId} 
           onUploadSuccess={handleUploadSuccess} 
         />
