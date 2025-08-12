@@ -6,28 +6,18 @@ from app.core.tools import (
     WikirateValidationTool,
 )
 from app.core.llm import llm
-from app.core.tools import (
-    ESGDocumentAnalysisTool,
-    NewsValidationTool,
-    ESGMetricsCalculatorTool,
-    WikirateValidationTool,
-)
-from app.core.llm import llm
 from app.config import VALID_COMPANIES
 from app.models import ESGAnalysisState
-from langgraph.graph import StateGraph, END
 from langgraph.graph import StateGraph, END
 from langchain.schema import HumanMessage
 from langchain_community.vectorstores import Chroma
 from langchain.agents import AgentExecutor
 from langchain.memory import ConversationBufferWindowMemory
 from langchain.tools import Tool
-import re
 import json
 from app.core.utils import is_esg_related
 from app.core.company import extract_company_info
 
-# 全局对象缓存
 # 全局对象缓存
 document_stores: Dict[str, Chroma] = {}
 agent_executors: Dict[str, AgentExecutor] = {}
@@ -37,18 +27,14 @@ def generate_initial_thoughts(state: ESGAnalysisState) -> ESGAnalysisState:
     output_language = state.get("output_language", "en")
 
     prompt = f"""
-
-    prompt = f"""
     You are an expert ESG analyst tasked with identifying greenwashing in corporate reports.
     Generate 4 different analytical approaches to examine this ESG document for greenwashing indicators.
-
 
     Each approach should focus on a different aspect:
     1. Quantitative analysis of specific metrics and targets
     2. Qualitative analysis of language and claims
     3. Comparative analysis against industry standards
     4. Temporal analysis of commitments vs. achievements
-
 
     For each approach, provide:
     - A specific analytical question to investigate
@@ -61,12 +47,9 @@ def generate_initial_thoughts(state: ESGAnalysisState) -> ESGAnalysisState:
     Respond in {output_language}.
     """
 
-
     try:
         response = llm.invoke([HumanMessage(content=prompt)])
-        response = llm.invoke([HumanMessage(content=prompt)])
         thoughts_text = response.content
-
 
         try:
             thoughts = json.loads(thoughts_text)
@@ -77,14 +60,11 @@ def generate_initial_thoughts(state: ESGAnalysisState) -> ESGAnalysisState:
         except json.JSONDecodeError:
             state["initial_thoughts"] = thoughts_text.split('\n\n')
 
-
         return state
-
 
     except Exception as e:
         state["error"] = f"Error generating thoughts: {str(e)}"
         return state
-
 
 
 def evaluate_and_select_thoughts(state: ESGAnalysisState) -> ESGAnalysisState:
@@ -127,7 +107,6 @@ def evaluate_and_select_thoughts(state: ESGAnalysisState) -> ESGAnalysisState:
         except json.JSONDecodeError:
             # Fallback: use first 3 thoughts
             
-            
             state["selected_thoughts"] = thoughts[:3]
             
         return state
@@ -140,7 +119,6 @@ def perform_document_analysis(state: ESGAnalysisState) -> ESGAnalysisState:
     if state.get("error"):
         return state
 
-
     vector_store = state.get("vector_store")
     selected_thoughts = state.get("initial_thoughts", [])
 
@@ -149,11 +127,9 @@ def perform_document_analysis(state: ESGAnalysisState) -> ESGAnalysisState:
         state["error"] = "No vector store available for analysis"
         return state
 
-
     try:
         analysis_tool = ESGDocumentAnalysisTool(vector_store)
         analysis_results = []
-
 
         for thought in selected_thoughts:
             query = f"Analyze the document using this approach: {thought}"
@@ -162,15 +138,12 @@ def perform_document_analysis(state: ESGAnalysisState) -> ESGAnalysisState:
 
         state["document_analysis"] = analysis_results
     
-    
         return state
-
 
     except Exception as e:
         state["error"] = f"Error in document analysis: {str(e)}"
         return state
 
-def extract_quotations_and_tools(state: ESGAnalysisState) -> ESGAnalysisState:
 def extract_quotations_and_tools(state: ESGAnalysisState) -> ESGAnalysisState:
     if state.get("error"):
         return state
@@ -201,19 +174,7 @@ def extract_quotations_and_tools(state: ESGAnalysisState) -> ESGAnalysisState:
         text = response.content.strip()
 
         text = text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-        text = text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
 
-        # Try loading JSON
-        try:
-            quotations = json.loads(text)
-            if not isinstance(quotations, list):
-                raise ValueError("Parsed quotations is not a list.")
-        except Exception as e:
-            print("[ERROR] Failed to parse quotations JSON:", str(e))
-            print("[RAW TEXT]", text[:500])
-            quotations = []
-
-        state["quotations"] = quotations
         # Try loading JSON
         try:
             quotations = json.loads(text)
@@ -228,7 +189,6 @@ def extract_quotations_and_tools(state: ESGAnalysisState) -> ESGAnalysisState:
         return state
 
     except Exception as e:
-        state["error"] = f"Error extracting quotations: {str(e)}"
         state["error"] = f"Error extracting quotations: {str(e)}"
         return state
 
@@ -301,16 +261,11 @@ def validate_each_quotation_independently(state: ESGAnalysisState) -> ESGAnalysi
     if state.get("error"):
         return state
 
-
     company_name = state.get("company_name", "")
     lower_name = company_name.lower()
     tool_plan = state.get("tool_plan", [])
     validated = []
-    tool_plan = state.get("tool_plan", [])
-    validated = []
 
-    news_tool = NewsValidationTool(company_name)
-    wikirate_tool = WikirateValidationTool(company_name)
     news_tool = NewsValidationTool(company_name)
     wikirate_tool = WikirateValidationTool(company_name)
 
@@ -351,8 +306,6 @@ def validate_each_quotation_independently(state: ESGAnalysisState) -> ESGAnalysi
 
             full_result = wikirate_tool._run(prompt)
 
-            if lower_name not in VALID_COMPANIES:
-                full_result = f"[Warning] '{company_name}' not in whitelist. Forced Wikirate validation.\n\n{full_result}"
             if lower_name not in VALID_COMPANIES:
                 full_result = f"[Warning] '{company_name}' not in whitelist. Forced Wikirate validation.\n\n{full_result}"
 
@@ -414,9 +367,6 @@ def synthesize_final_report(state: ESGAnalysisState) -> ESGAnalysisState:
 
     analysis = state.get("document_analysis", "")
     validations = state.get("validations", [])
-
-    analysis = state.get("document_analysis", "")
-    validations = state.get("validations", [])
     metrics = state.get("metrics", "")
     lang = state.get("output_language", "en")
 
@@ -458,14 +408,11 @@ def synthesize_final_report(state: ESGAnalysisState) -> ESGAnalysisState:
 
     try:
         response = llm.invoke([HumanMessage(content=prompt)])
-        response = llm.invoke([HumanMessage(content=prompt)])
         state["final_synthesis"] = response.content
         return state
     except Exception as e:
         state["error"] = f"Error generating final report: {str(e)}"
-        state["error"] = f"Error generating final report: {str(e)}"
         return state
-
 
 
 def check_completion(state: ESGAnalysisState) -> str:
@@ -488,21 +435,13 @@ def check_completion(state: ESGAnalysisState) -> str:
 def debug_state_log(state: ESGAnalysisState) -> ESGAnalysisState:
     return state
 
-def debug_state_log(state: ESGAnalysisState) -> ESGAnalysisState:
-    return state
-
 # Create LangGraph workflow
 def create_esg_analysis_graph():
     workflow = StateGraph(ESGAnalysisState)
 
-
     workflow.add_node("generate_thoughts", generate_initial_thoughts)
     workflow.add_node("evaluate_thoughts", evaluate_and_select_thoughts)  # ✅ 新增
-    workflow.add_node("evaluate_thoughts", evaluate_and_select_thoughts)  # ✅ 新增
     workflow.add_node("document_analysis", perform_document_analysis)
-    workflow.add_node("extract_quotations", extract_quotations_and_tools)
-    workflow.add_node("select_tools", determine_tools_for_each_quotation)
-    workflow.add_node("validate_quotations", validate_each_quotation_independently)
     workflow.add_node("extract_quotations", extract_quotations_and_tools)
     workflow.add_node("select_tools", determine_tools_for_each_quotation)
     workflow.add_node("validate_quotations", validate_each_quotation_independently)
@@ -518,18 +457,7 @@ def create_esg_analysis_graph():
     workflow.add_edge("debug_log", "select_tools")
     workflow.add_edge("select_tools", "validate_quotations")
     workflow.add_edge("validate_quotations", "calculate_metrics")
-
-    workflow.set_entry_point("generate_thoughts")
-    workflow.add_edge("generate_thoughts", "evaluate_thoughts")  # ✅ 关键修复
-    workflow.add_edge("evaluate_thoughts", "document_analysis")
-    workflow.add_edge("document_analysis", "extract_quotations")
-    workflow.add_node("debug_log", debug_state_log)
-    workflow.add_edge("extract_quotations", "debug_log")
-    workflow.add_edge("debug_log", "select_tools")
-    workflow.add_edge("select_tools", "validate_quotations")
-    workflow.add_edge("validate_quotations", "calculate_metrics")
     workflow.add_edge("calculate_metrics", "final_synthesis")
-
 
     workflow.add_conditional_edges(
         "final_synthesis",
@@ -541,9 +469,7 @@ def create_esg_analysis_graph():
         }
     )
 
-
     return workflow.compile()
-
 
 
 # Agent creation function
@@ -646,19 +572,8 @@ async def comprehensive_esg_analysis(session_id: str, vector_store: Chroma, comp
                 for v in result.get("validations", [])
                 if "wikirate" in v.get("validation", {})
             ),
-            "news_validation": "\n\n".join(
-                v["validation"]["news"]
-                for v in result.get("validations", [])
-                if "news" in v.get("validation", {})
-            ),
-            "wikirate_validation": "\n\n".join(
-                v["validation"]["wikirate"]
-                for v in result.get("validations", [])
-                if "wikirate" in v.get("validation", {})
-            ),
             "metrics": result.get("metrics", ""),
             "final_synthesis": result.get("final_synthesis", ""),
-            "tool_plan": result.get("tool_plan", []),  
             "tool_plan": result.get("tool_plan", []),  
             "comprehensive_analysis": f"""
             Initial Thoughts: {result.get('initial_thoughts', [])}
@@ -682,7 +597,6 @@ async def fallback_agent_analysis(session_id: str, vector_store: Chroma, company
     
     agent = create_esg_agent(session_id, vector_store, company_name)
     agent_executors[session_id] = agent
-    wikirate_validation = "" 
     wikirate_validation = "" 
     
     document_analysis = agent.run(
@@ -740,7 +654,6 @@ async def fallback_agent_analysis(session_id: str, vector_store: Chroma, company
         "document_analysis": document_analysis,
         "news_validation": news_validation,
         "wikirate_validation": wikirate_validation,
-        "wikirate_validation": wikirate_validation,
         "metrics": metrics_calculation,
         "final_synthesis": final_synthesis,
         "comprehensive_analysis": f"""
@@ -751,5 +664,4 @@ async def fallback_agent_analysis(session_id: str, vector_store: Chroma, company
         Metrics: {metrics_calculation}
         """,
         "error": None
-    }
     }

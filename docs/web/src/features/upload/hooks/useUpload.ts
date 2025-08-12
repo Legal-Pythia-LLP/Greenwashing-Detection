@@ -1,32 +1,32 @@
-import {useQuery} from '@tanstack/react-query';
-import {APIService} from '@lp/services/api.service';
-import {UploadFormValues} from '../types';
-import {UseFormReturn} from 'react-hook-form';
+'use client';
 
-interface UseUploadProps {
-  sessionId: string;
-  onUploadSuccess: (data: any) => void;
-  form: UseFormReturn<UploadFormValues>;
-}
+import {useState} from 'react';
+import {formSchema} from '../types';
+import {z} from 'zod';
 
-export function useUpload({sessionId, onUploadSuccess, form}: UseUploadProps) {
-  const {isFetching, refetch} = useQuery({
-    queryKey: ['uploadFile', form.getValues()],
-    queryFn: async () => {
-      const values = form.getValues();
-      const data = await APIService.uploadFile(
-        values.file, 
-        sessionId, 
-        values.language
-      );
-      onUploadSuccess(data);
-      return data;
-    },
-    enabled: false,
-  });
+export function useUpload() {
+  const [isFetching, setIsFetching] = useState(false);
+  const [onclick, setOnclick] = useState(false);
+
+  const handleSubmit = async (values: z.infer<typeof formSchema>) => {
+    setIsFetching(true);
+    setOnclick(true);
+    
+    try {
+      // 这里添加实际的上传逻辑
+      console.log('Uploading file:', values.file);
+      
+      // 模拟上传延迟
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } finally {
+      setIsFetching(false);
+      setTimeout(() => setOnclick(false), 500);
+    }
+  };
 
   return {
-    isUploading: isFetching,
-    uploadFile: refetch,
+    isFetching,
+    onclick,
+    handleSubmit
   };
 }

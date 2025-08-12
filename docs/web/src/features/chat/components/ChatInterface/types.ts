@@ -1,23 +1,49 @@
-export interface ChatMessage {
+export interface Message {
   role: string;
   content: string;
 }
 
-export interface ChatInterfaceProps {
-  sessionId: string;
-  initialMessages?: ChatMessage[];
-  graphData?: string;
-  companyName?: string;
-  onHeaderVisibility?: (show: boolean) => void;
+export interface ChatContainerProps {
+  messages: Message[];
+  currentMessage: string | null;
+  input: string;
+  setInput: (value: string) => void;
+  handleSend: () => void;
+  handleKeyDown: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  sendingMessage: boolean;
+  validating: boolean;
+  showValidateButton: boolean;
+  handleValidate: () => void;
+  onclick: boolean;
+  setOnclick: (value: boolean) => void;
+  graphData: string;
+  sidebarOpen: boolean;
+  setSidebarOpen: (value: boolean) => void;
+  isError: boolean;
+  error: any;
 }
 
-export const SCROLL_BEHAVIOUR = {
-  user: {
-    type: 'smooth' as const,
-    position: 'end' as const,
-  },
-  bot: {
-    type: 'smooth' as const,
-    position: 'start' as const,
-  },
-};
+export interface ChatMessageProps {
+  message: Message;
+  currentMessage: string | null;
+  isError: boolean;
+  error: any;
+}
+
+export interface ChatInputProps {
+  input: string;
+  setInput: (value: string) => void;
+  handleSend: () => void;
+  handleKeyDown: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  sendingMessage: boolean;
+  validating: boolean;
+  showValidateButton: boolean;
+  handleValidate: () => void;
+  onclick: boolean;
+  setOnclick: (value: boolean) => void;
+}
+
+export interface ScrollBehaviour {
+  type: 'smooth' | 'auto';
+  position: 'start' | 'center' | 'end' | 'nearest';
+}

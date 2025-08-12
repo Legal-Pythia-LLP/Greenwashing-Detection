@@ -1,33 +1,43 @@
 'use client';
 
 import ReactMarkdown from 'react-markdown';
-import type { ChatMessage } from './types';
+import {ExclamationTriangleIcon} from '@radix-ui/react-icons';
+import {Alert, AlertDescription, AlertTitle} from '@lp/components/ui/alert';
 
-interface ChatMessageProps {
-  message: ChatMessage;
-  isCurrent?: boolean;
-}
+import { ChatMessageProps } from './types';
 
-export function ChatMessage({ message, isCurrent = false }: ChatMessageProps) {
+export function ChatMessage({
+  message,
+  currentMessage,
+  isError,
+  error
+}: ChatMessageProps) {
+  function formatText(content: string) {
+    return content.replace(/([$£])(\S+)/g, '**$1**$2****');
+  }
+
+  if (isError) {
+    return (
+      <Alert variant='destructive'>
+        <ExclamationTriangleIcon className='h-4 w-4' />
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription>{error.message}</AlertDescription>
+      </Alert>
+    );
+  }
+
   return (
-    <div
-      className={`mb-3 flex ${
-        message.role === 'user' ? 'justify-end' : 'justify-start'
-      }`}
-      data-role={message.role}
-    >
+    <div className={`mb-3 flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
       <div className='max-w-[600px] break-words'>
         <div
           className={`font-semibold mb-1 ${
             message.role === 'user' ? 'text-right mr-3' : 'text-left ml-3'
-          }`}
-        >
+          }`}>
           {message.role === 'user' ? 'You' : 'Explainable AI'}
         </div>
 
         <div
-          className={`whitespace-pre-line break-words border border-gray-300 p-3 rounded-3xl w-auto text-left`}
-        >
+          className={`whitespace-pre-line break-words border border-gray-300 p-3 rounded-3xl w-auto text-left`}>
           <div className='markdown-container'>
             <ReactMarkdown
               className="prose max-w-none 
@@ -48,9 +58,8 @@ export function ChatMessage({ message, isCurrent = false }: ChatMessageProps) {
                 [&_p]:mt-0
                 [&_p]:ml-0
                 [&_blockquote]:my-0
-                leading-tight"
-            >
-              {message.content}
+                leading-tight">
+              {formatText(message.content)}
             </ReactMarkdown>
           </div>
         </div>

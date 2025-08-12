@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { mockUploadResponse } from './mockData';
 
 // const api = axios.create({baseURL: 'https://api.hlt.prototypes.legalpythia.com'});
 const api = axios.create({
@@ -7,7 +8,11 @@ const api = axios.create({
 // const api = axios.create({baseURL: 'http://127.0.0.1:8000'});
 
 export class APIService {
-  static async uploadFile(file: File, session_id: string) {
+  static async uploadFile(file: File, session_id: string, useMock: boolean = false) {
+    if (useMock) {
+      return mockUploadResponse;
+    }
+
     const fd = new FormData();
     fd.append('file', file);
     fd.append('session_id', session_id);

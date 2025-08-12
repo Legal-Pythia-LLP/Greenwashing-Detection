@@ -1,9 +1,21 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { SCROLL_BEHAVIOUR } from './types';
+import {useEffect, useRef} from 'react';
 
-export function useChatScroll(messages: any[], currentMessage: string | null) {
+import { ScrollBehaviour } from './types';
+
+const SCROLL_BEHAVIOUR = {
+  user: {
+    type: 'smooth' as const,
+    position: 'end' as const,
+  },
+  bot: {
+    type: 'smooth' as const,
+    position: 'start' as const,
+  },
+} satisfies { user: ScrollBehaviour; bot: ScrollBehaviour };
+
+export function useChatScroll(messages: {role: string; content: string}[], currentMessage: string | null) {
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

@@ -1,5 +1,5 @@
 'use client'
-import {ChatInterface} from '@lp/features/chat/components/ChatInterface'
+import {ChatContainer} from '@lp/features/chat/components/ChatInterface/ChatContainer'
 
 export default function TestChatPage() {
   // 测试数据 - 包含多种消息类型
@@ -22,11 +22,24 @@ export default function TestChatPage() {
     <div className="p-8 bg-gray-50 min-h-screen">
       <h1 className="text-2xl font-bold mb-6">ChatInterface 测试页面</h1>
       <div className="max-w-4xl mx-auto">
-        <ChatInterface 
-          sessionId="test_session_123"
-          initialMessages={testMessages}
-          companyName="测试公司"
-          onHeaderVisibility={() => {}}
+        <ChatContainer 
+          messages={testMessages}
+          currentMessage={null}
+          input={''}
+          setInput={() => {}}
+          handleSend={() => {}}
+          handleKeyDown={() => {}}
+          sendingMessage={false}
+          validating={false}
+          showValidateButton={false}
+          handleValidate={() => {}}
+          onclick={false}
+          setOnclick={() => {}}
+          graphData={''}
+          sidebarOpen={true}
+          setSidebarOpen={() => {}}
+          isError={false}
+          error={null}
         />
       </div>
     </div>

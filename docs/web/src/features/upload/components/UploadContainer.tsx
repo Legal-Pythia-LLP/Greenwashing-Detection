@@ -1,30 +1,29 @@
 'use client';
 
-import {z} from 'zod';
-import {Form} from '@lp/components/ui/form';
-import {useUpload} from '../hooks/useUpload';
-import {UploadFormProps} from '../types';
-import {useForm} from 'react-hook-form';
-import {formSchema} from '../types';
-import {zodResolver} from '@hookform/resolvers/zod';
-import {UploadInput} from './UploadInput';
-import {UploadLanguageSelect} from './UploadLanguageSelect';
-import {UploadButton} from './UploadButton';
 import {Card, CardContent, CardFooter, CardHeader, CardTitle} from '@lp/components/ui/card';
+import {UploadInput} from './UploadInput';
+import {UploadButton} from './UploadButton';
+import {useState, useEffect} from 'react';
+import {z} from 'zod';
+import {formSchema} from '../types';
+import {useForm} from 'react-hook-form';
+import {zodResolver} from '@hookform/resolvers/zod';
+import type {UploadFormProps} from '../types';
 
-export function UploadContainer({sessionId, onUploadSuccess}: UploadFormProps) {
+export function UploadContainer({onSubmit, isFetching, onclick}: UploadFormProps) {
+  const [fileSelected, setFileSelected] = useState(false);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      language: 'en',
-    },
   });
 
-  const {isUploading, uploadFile} = useUpload({
-    sessionId,
-    onUploadSuccess,
-    form
-  });
+  useEffect(() => {
+    const initializeSession = async () => {
+      const newSessionId = crypto.randomUUID();
+      console.log('Initializing sessionId:', newSessionId);
+      form.setValue('sessionId', newSessionId, {shouldValidate: true});
+    };
+    initializeSession();
+  }, [form]);
 
   return (
     <Card>
@@ -43,17 +42,34 @@ export function UploadContainer({sessionId, onUploadSuccess}: UploadFormProps) {
         </p>
         <div className='h-8' />
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(() => uploadFile())}>
-            <div className='grid w-full items-center gap-4'>
-              <UploadInput form={form} isUploading={isUploading} />
-              <UploadLanguageSelect form={form} />
-            </div>
-            <CardFooter className='flex justify-center'>
-              <UploadButton isUploading={isUploading} />
-            </CardFooter>
-          </form>
-        </Form>
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <div className='grid w-full items-center gap-4'>
+              <UploadInput
+              onChange={(file) => {
+                if (!file) {
+                  form.setError('file', {message: 'Please select a pdf file.'});
+                  return;
+                }
+                console.log('Selected file:', file);
+                form.setValue('file', file, {shouldValidate: true});
+                setFileSelected(true);
+              }}
+              disabled={isFetching}
+            />
+          </div>
+          <CardFooter className='flex justify-center'>
+            <UploadButton
+              isFetching={isFetching}
+              onclick={onclick}
+              fileSelected={fileSelected}
+              onClick={() => {
+                const values = form.getValues();
+                console.log('Submitting form with values:', values);
+                onSubmit(values);
+              }}
+            />
+          </CardFooter>
+        </form>
       </CardContent>
     </Card>
   );

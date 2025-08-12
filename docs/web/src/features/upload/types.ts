@@ -13,14 +13,29 @@ export const formSchema = z.object({
         message: 'Please select a pdf file.',
       }
     ),
-  language: z.string().optional(),
+  sessionId: z.string().uuid(),
 });
 
-export type UploadFormValues = z.infer<typeof formSchema>;
+export type UploadFormProps = {
+  onSubmit: (values: z.infer<typeof formSchema> & {sessionId: string}) => void;
+  isFetching: boolean;
+  onclick: boolean;
+};
 
-import {UseFormReturn} from 'react-hook-form';
+export interface UploadButtonProps {
+  isFetching: boolean;
+  onclick: boolean;
+  fileSelected: boolean;
+  onClick: () => void;
+}
 
-export interface UploadFormProps {
-  sessionId: string;
-  onUploadSuccess: (data: any) => void;
+export interface UploadInputProps {
+  onChange: (file: File | null) => void;
+  disabled: boolean;
+}
+
+export interface UploadLanguageSelectProps {
+  value: string;
+  onChange: (value: string) => void;
+  disabled: boolean;
 }

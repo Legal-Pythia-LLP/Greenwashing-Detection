@@ -21,3 +21,4 @@ langdetect
 PyPDF2
 unstructured
 selenium
+langchain-google-genai
