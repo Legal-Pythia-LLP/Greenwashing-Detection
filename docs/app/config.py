@@ -13,6 +13,8 @@ AZURE_OPENAI_API_KEY_2 = os.getenv("AZURE_OPENAI_API_KEY_2")
 AZURE_OPENAI_ENDPOINT_2 = os.getenv("AZURE_OPENAI_ENDPOINT_2")
 LLAMA_CLOUD_API_KEY = os.getenv("LLAMA_CLOUD_API_KEY")
 WIKIRATE_API_KEY = os.getenv("WIKIRATE_API_KEY")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+
 
 # Paths
 BASE_PATH = Path(__file__).parent.parent  # 指向项目根目录

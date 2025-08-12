@@ -89,6 +89,7 @@ async def upload_document(
             "wikirate_validation": analysis_results["wikirate_validation"],
             "graphdata": analysis_results["metrics"],
             "comprehensive_analysis": analysis_results["comprehensive_analysis"],
+            "tool_plan": analysis_results.get("tool_plan"),  # ✅ 添加这行
             "validation_complete": True,
             "filenames": ["bbc_articles", "cnn_articles"] if company_name.lower() in VALID_COMPANIES else None,
             "workflow_error": analysis_results.get("error"),

@@ -134,8 +134,8 @@ def bbc_search(name: str) -> Dict[str, str]:
             next_page = False
         else:
             page_count += 1
-            # ✅ 可选页数限制，保守起见设 50 页
-            if page_count > 50:
+   
+            if page_count > 10:
                 break
 
     if len(web_dictionary) != 0:
