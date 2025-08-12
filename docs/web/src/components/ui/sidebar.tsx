@@ -1,9 +1,9 @@
 'use client';
 
-import {cn} from '@lp/utils/css';
-import {X} from 'lucide-react';
-import {Component} from './piechart';
-import {ComponentRadar} from './radarchart';
+import { cn } from '@lp/utils/css';
+import { X } from 'lucide-react';
+import { Component } from './piechart';
+import { ComponentRadar } from './radarchart';
 
 interface RadarChartData {
   name: string;
@@ -21,7 +21,7 @@ interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
   onOpen: () => void;
-  message: string;
+  message: any; // 原来是 string，这里改成 any 方便支持对象
 }
 
 interface ScoreData {
@@ -31,50 +31,79 @@ interface ScoreData {
 
 interface AnalysisResult {
   metrics: ScoreData[];
-  overallScore: number | null; // Single overall score
+  overallScore: number | null; // 单个总体分数
 }
 
-function ExtractScore(message: string): AnalysisResult {
+function ExtractScore(message: any): AnalysisResult {
   const result: AnalysisResult = {
     metrics: [],
     overallScore: null,
   };
 
-  if (!message?.trim()) return result;
+  if (!message) return result;
 
-  // Extract overall score (as number)
-  const overallScoreMatch = message.match(
-    /\**Overall Greenwashing Score\**:\s*((?:\d*\.\d+)|(?:\d+))/i
-  );
-  if (overallScoreMatch) {
-    result.overallScore = parseFloat(overallScoreMatch[1]);
-  }
-
-  // Extract metrics table if it exists
-  if (message.includes('|--')) {
+  // ① 如果是对象（或 JSON 字符串可以先解析成对象）
+  if (typeof message === 'object') {
     try {
-      const rows = message.match(/\|.*?\|.*?\|/g)?.slice(2) || [];
-      for (const row of rows) {
-        const cols = row
-          .split(/\s*\|\s*/)
-          .map((x) => x.trim())
-          .filter((x) => x);
-        if (cols.length >= 2 && !isNaN(Number(cols[1]))) {
+      for (const [metric, value] of Object.entries(message)) {
+        if (metric === 'overall_greenwashing_score') {
+          result.overallScore = (value as any).score ?? null;
+        } else if (value && typeof value === 'object' && 'score' in value) {
           result.metrics.push({
-            Metric: cols[0],
-            Score: Number(cols[1]),
+            Metric: metric,
+            Score: (value as any).score,
           });
         }
       }
-    } catch (error) {
-      console.error(error);
+      return result;
+    } catch (err) {
+      console.error('Error parsing JSON metrics:', err);
+    }
+  }
+
+  // ② 如果是字符串且可能是 JSON
+  if (typeof message === 'string') {
+    try {
+      const parsed = JSON.parse(message);
+      return ExtractScore(parsed); // 递归用上面对象解析逻辑
+    } catch {
+      // 不是 JSON，就用原先的 Markdown 解析逻辑
+    }
+
+    // 提取总体分数
+    const overallScoreMatch = message.match(
+      /\**Overall Greenwashing Score\**:\s*((?:\d*\.\d+)|(?:\d+))/i
+    );
+    if (overallScoreMatch) {
+      result.overallScore = parseFloat(overallScoreMatch[1]);
+    }
+
+    // 提取表格数据
+    if (message.includes('|--')) {
+      try {
+        const rows = message.match(/\|.*?\|.*?\|/g)?.slice(2) || [];
+        for (const row of rows) {
+          const cols = row
+            .split(/\s*\|\s*/)
+            .map((x) => x.trim())
+            .filter((x) => x);
+          if (cols.length >= 2 && !isNaN(Number(cols[1]))) {
+            result.metrics.push({
+              Metric: cols[0],
+              Score: Number(cols[1]),
+            });
+          }
+        }
+      } catch (error) {
+        console.error(error);
+      }
     }
   }
 
   return result;
 }
 
-export const Sidebar = ({isOpen, onClose, onOpen, message}: SidebarProps) => {
+export const Sidebar = ({ isOpen, onClose, onOpen, message }: SidebarProps) => {
   const r = ExtractScore(message);
   const score = r.overallScore ?? 0;
   const data: RadarChartData[] = transformToSimpleFormat(r.metrics);
@@ -89,7 +118,8 @@ export const Sidebar = ({isOpen, onClose, onOpen, message}: SidebarProps) => {
           'overflow-auto',
           'h-full',
           isOpen ? 'bg-white border-r-2' : 'border-r-0 bg-transparent'
-        )}>
+        )}
+      >
         <div className='flex flex-col h-full justify-between py-4'>
           <div className='flex items-center justify-end'>
             {isOpen ? (
@@ -97,7 +127,8 @@ export const Sidebar = ({isOpen, onClose, onOpen, message}: SidebarProps) => {
                 onClick={() => {
                   onClose();
                 }}
-                className='fixed top-4 left-4 z-40 p-2 text-white bg-blue-500 rounded-md hover:bg-blue-600'>
+                className='fixed top-4 left-4 z-40 p-2 text-white bg-blue-500 rounded-md hover:bg-blue-600'
+              >
                 <X className='h-6 w-6' />
               </button>
             ) : (
@@ -105,12 +136,14 @@ export const Sidebar = ({isOpen, onClose, onOpen, message}: SidebarProps) => {
                 onClick={() => {
                   onOpen();
                 }}
-                className='fixed top-4 left-4 z-40 p-2 text-white bg-blue-500 rounded-md hover:bg-blue-600'>
+                className='fixed top-4 left-4 z-40 p-2 text-white bg-blue-500 rounded-md hover:bg-blue-600'
+              >
                 <svg
                   xmlns='http://www.w3.org/2000/svg'
                   viewBox='0 0 24 24'
                   fill='currentColor'
-                  className='h-6 w-6'>
+                  className='h-6 w-6'
+                >
                   <path d='M3 3v18h18' stroke='currentColor' strokeWidth='2' fill='none' />
                   <circle cx='6' cy='12' r='1.5' fill='currentColor' />
                   <circle cx='10' cy='8' r='1.5' fill='currentColor' />

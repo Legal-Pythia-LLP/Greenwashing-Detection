@@ -53,7 +53,6 @@ def url_download(links: dict, directory: str = "downloads") -> Dict[str, str]:
             response = requests.get(url, timeout=10)
             with open(path, "w", encoding="utf-8") as f:
                 f.write(response.text)
-
             downloads_dictionary[title] = path
         except Exception as e:
             print(f"[ERROR] Failed to download {url}: {e}")

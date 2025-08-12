@@ -75,6 +75,9 @@ async def upload_document(
         # 执行 ESG 分析
         analysis_results = await comprehensive_esg_analysis(session_id, vector_store, company_name,overrided_language or "en")
 
+        print("=== METRICS JSON ===")
+        print(analysis_results["metrics"])
+
         # 删除临时文件
         file_path.unlink(missing_ok=True)
 
