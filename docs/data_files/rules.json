@@ -272,5 +272,14 @@
     "source_ref": "FLAG targets & land sector guidance expectations",
     "note": "Nature/deforestation claims without metrics or methodology.",
     "id": 1101
+  },
+
+
+  {
+    "name":["Test","Sentinel"],
+    "rule":{"type":"regex","regex":"ZZZTESTFLAG","ignore_case":true},
+    "score":9,
+    "id":999001
   }
+
 ]

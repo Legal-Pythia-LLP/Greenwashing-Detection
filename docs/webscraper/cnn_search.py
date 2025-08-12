@@ -1,129 +1,136 @@
 import os
 import re
-import shutil
+import hashlib
 from datetime import datetime, timedelta
 from typing import Dict
-import requests
+
 from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+import requests
 
 
 def date_calculation(delta: int) -> datetime:
-    """
-    计算距离当前日期 delta 天的日期，用于新闻爬虫的时间范围。
-    """
     current_date = datetime.now()
-    from_date = current_date - timedelta(days=delta)
-    return from_date
+    return current_date - timedelta(days=delta)
+
+
+def url_validity(url: str) -> bool:
+    return not any(x in url for x in ["videos", "live", "shows"])
+
+
+
+def date_conversion(date: str) -> datetime:
+    components = date.split(" ")
+    if len(components) == 3 and components[2] == "ago":
+        return datetime.now() - timedelta(hours=int(components[0]))
+    else:
+        month = datetime.strptime(components[1], "%B").month
+        if len(components) == 2:
+            return datetime(datetime.now().year, month, int(components[0]))
+        else:
+            return datetime(int(components[2]), month, int(components[0]))
 
 
 def url_download(links: dict, directory: str = "downloads") -> Dict[str, str]:
-    """
-    下载所有链接到本地目录，返回标题到本地文件路径的映射。
-    """
-    if os.path.isdir(directory):
-        shutil.rmtree(directory)
-        print(f"Directory '{directory}' has been deleted.")
     os.makedirs(directory, exist_ok=True)
     downloads_dictionary = {}
-    try:
-        for title, url in links.items():
-            # 移除特殊字符
-            new_title = "".join(char for char in title if char.isalnum())
-            path = os.path.join(directory, f"{new_title}.html")
+
+    for title, url in links.items():
+        safe_title = "".join(char for char in title if char.isalnum()) or "article"
+        title_hash = hashlib.md5(title.encode("utf-8")).hexdigest()[:8]
+        filename = f"{safe_title[:50]}_{title_hash}.html"
+        path = os.path.join(directory, filename)
+
+        if os.path.exists(path):
+            downloads_dictionary[title] = path
+            continue
+
+        try:
             response = requests.get(url, timeout=10)
             with open(path, "w", encoding="utf-8") as f:
                 f.write(response.text)
             downloads_dictionary[title] = path
-    except requests.exceptions.RequestException as e:
-        raise f"Request failed: {e}"
-    except OSError as e:
-        raise f"File saving error: {e}"
+        except Exception as e:
+            print(f"[ERROR] Failed to download {url}: {e}")
+
     return downloads_dictionary
-
-
-def url_validity(url: str) -> bool:
-    """
-    判断URL是否为新闻/文章类型。
-    """
-    return "articles" in url or "news" in url
-
-
-def date_conversion(date: str) -> datetime:
-    """
-    将爬取到的日期字符串转换为 datetime 类型。
-    """
-    components = date.split(" ")
-    if len(components) == 3 and components[2] == "ago":  # e.g. ['8','hours','ago]
-        if components[1] == "hours":
-            return datetime.now() - timedelta(hours=int(components[0]))
-        else:
-            return datetime.now() - timedelta(hours=int(components[0]))
-    else:
-        month = datetime.strptime(components[1], "%B").month
-        if len(components) == 2:  # e.g. ['30','October']
-            return datetime(datetime.now().year, month, int(components[0]))
-        else:  # e.g. #['30','October','2021']
-            return datetime(int(components[2]), month, int(components[0]))
 
 
 def cnn_search(name: str) -> Dict[str, str]:
     """
-    CNN 新闻爬虫，搜索与 name 相关的新闻，下载并返回本地路径。
+    使用 Selenium 抓取 CNN 搜索结果，下载并返回本地路径
     """
-    depth = 10
+    depth = 20
     delta = 365 * 2
     last_date = date_calculation(delta)
     web_dictionary = {}
     page_count = 1
-    next_page = True
-    limit = False
-    while next_page:
-        source = f"https://www.cnn.com/search?q={name}&size=10&page={page_count}"
-        response = requests.get(source)
-        if page_count > 29:
+
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+
+    driver = webdriver.Chrome(options=chrome_options)
+
+    while True:
+        url = f"https://www.cnn.com/search?q={name}&size=10&page={page_count}"
+        driver.get(url)
+
+        try:
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "div.container__headline"))
+            )
+        except:
+            print(f"[DEBUG] CNN 第 {page_count} 页无文章，结束")
             break
-        response.encoding = "utf-8"
-        soup = BeautifulSoup(response.text, "html.parser")
-        articles = soup.find_all(
-            "div",
-            attrs={"data-uri": re.compile(r"^/_components/card/instances/search-")},
-        )
-        if not articles:
+
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+        cards = soup.select("div.container__headline")
+
+        if not cards:
+            print(f"[DEBUG] CNN 第 {page_count} 页无文章，结束")
             break
-        for article in articles:
-            title_struct = article.find("span", class_="container__headline-text")
-            if not title_struct:
+
+        for card in cards:
+            a_tag = card.find("a")
+            title = a_tag.get_text(strip=True) if a_tag else None
+            link = a_tag["href"] if a_tag and a_tag.has_attr("href") else None
+
+            date_tag = card.find_next("div", class_="container__date")
+            article_date = date_tag.get_text(strip=True) if date_tag else None
+
+            if not title or not link or not article_date:
                 continue
-            title = title_struct.get_text(strip=True)
-            a_tag = article.find("a")
-            if not a_tag:
-                continue
-            link = a_tag.get("href")
-            if not link:
-                continue
-            date_struct = article.find("div", class_="container__date")
-            if not date_struct:
-                continue
-            article_date = date_struct.get_text(strip=True)
-            if not article_date:
-                continue
+
             try:
                 date = date_conversion(article_date)
             except:
-                continue  # Skips the unnecessary part of the code
-            size = len(web_dictionary) + 1 <= depth
-            if url_validity(link) and size and date >= last_date:
+                continue
+
+            if url_validity(link) and len(web_dictionary) < depth and date >= last_date:
+                if link.startswith("/"):
+                    link = "https://www.cnn.com" + link
                 web_dictionary[title] = link
-            elif not size:
-                limit = True
+
+            if len(web_dictionary) >= depth:
                 break
-        if limit:  # checks if we have reached the 10 page limit, speeding up runtime
-            next_page = False
-        else:
-            page_count += 1
-    local_file_dict = {}
-    if len(web_dictionary) != 0:
-        local_file_dict = url_download(web_dictionary)
-        return local_file_dict
+
+        if len(web_dictionary) >= depth or page_count >= 20:
+            break
+        page_count += 1
+
+    driver.quit()
+
+    if web_dictionary:
+        print(f"[DEBUG] 抓取到 CNN 文章数量: {len(web_dictionary)}")
+        for i, title in enumerate(web_dictionary.keys(), 1):
+            print(f"  [CNN] {title}")
+        return url_download(web_dictionary)
     else:
-        return None 
+        print("[DEBUG] CNN 未找到符合条件的文章")
+        return None

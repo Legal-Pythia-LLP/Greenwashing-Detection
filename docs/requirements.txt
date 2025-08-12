@@ -1,29 +1,38 @@
-﻿# --- Web framework ---
-fastapi
+﻿fastapi
 uvicorn
 python-dotenv
 starlette
 python-multipart
 requests
 
-# --- LLM and AI tools ---
-langchain
-langchain-openai
-langchain-community
-langgraph
+langchain>=0.3,<0.4
+langchain-openai>=0.2,<0.3
+langchain-community>=0.3,<0.4
+langgraph>=0.2,<0.3
+langchain-google-genai>=2.0,<3.0
+langchain-text-splitters>=0.3,<0.4
+langsmith>=0.1.140
+chromadb>=0.5,<0.6
+
 transformers
 torch
 
-# --- Data processing ---
 pandas
 beautifulsoup4
-chromadb
 pypdf
+cloudscraper
+wikirate4py
+name_matching
+langdetect
+PyPDF2
+unstructured
 
-# --- OCR dependencies ---
-paddlepaddle>=2.6,<2.7
-paddleocr>=2.9,<3.0
-opencv-python>=4.10,<4.11
+paddlepaddle==2.6.2
+paddleocr==2.9.1
+opencv-python==4.10.0.84
 pytesseract
-Pillow
-numpy>=1.25,<1.27
+Pillow==10.4.0
+numpy==1.26.4
+
+protobuf==3.20.2
+google-generativeai

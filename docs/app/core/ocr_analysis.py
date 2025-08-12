@@ -1,22 +1,30 @@
-from langchain.schema import HumanMessage
-from app.core.llm import llm  # 你们组已有模块
+import json, re, ast
+from langchain_core.messages import HumanMessage, SystemMessage
+from app.core.llm import llm
 
 def analyse_ocr_text(text: str) -> dict:
-    prompt = f"""
-You are an assistant that detects vague or greenwashing claims in marketing or product descriptions.
+    sys = SystemMessage(content='Return ONLY a JSON object with keys exactly: "highlights" (array of strings) and "comment" (string). No extra text.')
+    user = HumanMessage(content=f'Detect vague/greenwashing phrases.\n\nText:\n"""{text}"""')
 
-Given the following text, identify any phrases that may be vague or suggest greenwashing. Return JSON like:
+    resp = llm.invoke([sys, user])
+    s = resp.content.strip()
 
-{{
-  "highlights": ["example phrase", "another example"],
-  "comment": "Explain why they are potentially misleading."
-}}
+    m = re.search(r"\{.*\}", s, flags=re.S)
+    if not m:
+        return {"highlights": [], "comment": "Model returned no JSON."}
+    payload = m.group(0)
 
-Text:
-\"\"\"{text}\"\"\"
-"""
-    response = llm.invoke([HumanMessage(content=prompt)])
     try:
-        return eval(response.content)  # 暂用 eval，后续可改 json.loads
-    except:
-        return {"highlights": [], "comment": "LLM failed to parse."}
+        data = json.loads(payload)  # 优先严格 JSON
+    except json.JSONDecodeError:
+        try:
+            data = ast.literal_eval(payload)  # 兜底解析 Python 风格字典
+        except Exception:
+            return {"highlights": [], "comment": "Model returned non-JSON."}
+
+    h = data.get("highlights")
+    c = data.get("comment")
+    return {
+        "highlights": h if isinstance(h, list) else [],
+        "comment": c if isinstance(c, str) else ""
+    }
