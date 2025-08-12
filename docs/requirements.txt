@@ -14,3 +14,11 @@ beautifulsoup4
 requests
 python-multipart
 pypdf
+cloudscraper
+wikirate4py
+name_matching
+langdetect
+PyPDF2
+unstructured
+selenium
+langchain-google-genai
