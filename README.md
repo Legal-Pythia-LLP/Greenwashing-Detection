@@ -1,81 +1,66 @@
-Test
-# Summer-Project
+# ESG Greenwashing Analysis API
 
-## 題目：
+This project is based on FastAPI, LangChain, OpenAI/ClimateBERT, etc., providing an automated API for ESG greenwashing analysis. It has achieved complete modularization with clear structure, making it easy to maintain and extend.
 
-Exciting news from Legal Pythia! Since you already know us, you'll be stoked to hear we're offering a super cool project: we're looking for awesome Computer Science students to help us supercharge our Explainable AI (XAI) chatbot that detects greenwashing in financial documents! 🤖🌿💰
+## Tech Stack
+- Backend: FastAPI, Uvicorn  
+- AI: OpenAI, ClimateBERT, LangChain, LangGraph  
+- Database: SQLite (built-in), FAISS (vector storage)  
+- Frontend: React (under v2 directory)  
+- Tools: Pydantic, BeautifulSoup (web scraping)  
 
-This project is all about making our AI even smarter. You'll dive into:
+## Main Features
+- ESG report upload and automated analysis (PDF supported)  
+- LangGraph workflow and Agent intelligent reasoning  
+- News verification and greenwashing metrics quantification  
+- Multi-model and custom tool extensions  
+- Fully layered architecture design  
 
-- Improving how our AI explains itself: Making explanations clearer, more detailed, and maybe even visual!
-- Refining detection: Helping our AI get better at spotting those really subtle greenwashing tricks.
-- Building a slick user interface: Designing a web dashboard that makes our tech easy for financial pros to use.
-- (Optional stretch goal) Exploring other languages: Seeing if our greenwashing detection can work in German!
+## Quick Start
 
-This is a fantastic chance to apply your AI and UX skills to a real-world problem with a huge impact on trust and transparency in the financial world. If you're keen to jump on board and help us make a difference, let me know!
+### Environment Setup
+Recommended Python 3.10+
 
----
+```bash
+# Create virtual environment
+python -m venv venv
 
-## 需求：
+# Activate virtual environment (Windows)
+venv\Scripts\activate
 
-### Advanced Explainability Features
+# Install dependencies
+pip install -r requirements.txt
+```
 
-Develop more granular and interactive explanations. For example, can the chatbot not just say "this claim is vague," but highlight the exact vague phrases, suggest clearer alternatives, or cite counter-evidence from other parts of the document or external data? Could they build a simple visualization for the explanation?
+### Database Initialization
+```bash
+python -m app.init_db
+```
 
-### Targeted Greenwashing Typologies
+### Start Service
+```bash
+# Development mode
+uvicorn app.main:app --reload
 
-Research and implement detection for specific, subtle greenwashing tactics prevalent in financial disclosures (e.g., "green-wishing" - aspirational but unbacked claims, "cherry-picking" data, "hidden trade-offs"). This would require deeper NLP model fine-tuning.
+# Production mode
+python -m app.main
+```
 
-### Intuitive User Interface/Dashboard
+## Project Structure
 
-Design and prototype an interactive web interface or dashboard where financial users (e.g., ESG analysts, compliance officers) can easily upload documents, receive risk scores, explore flagged claims with their XAI explanations, and generate summary reports.
+```
+summer-pro/
+├── app/                  # Backend core code
+│   ├── api/              # API routes
+│   ├── core/             # Business logic & tools
+│   ├── models/           # Data models
+│   ├── config.py         # Configuration management
+│   └── main.py           # Application entry
+├── v2/                   # Frontend React app
+├── data/                 # Database files
+├── pdfs/                 # Example ESG reports
+├── uploads/              # Uploaded file storage
+├── tests/                # Unit tests
+└── webscraper/           # News scraper
+```
 
-### Multilingual Pilot (if applicable)
-
-Explore the feasibility or a basic implementation of greenwashing detection in a specific non-English financial document language, showcasing the potential for broader market reach.
-
----
-
-## Tasks:
-
-### UI Team (All)
-
-- **Design Explainability Visualizations**  
-  Focus on intuitive ways to show why a claim is flagged (e.g., highlighting specific phrases, displaying confidence scores, simple bar charts for contributing factors).
-
-- **Chatbot User Interface (UI/UX)**  
-  Design a seamless and user-friendly interface for the chatbot, ensuring natural conversation flow and clear presentation of its responses and explanations.
-
-- **Overall Dashboard Refinement**  
-  Improve the general aesthetic and navigability of the main dashboard where analysis results are displayed.
-
----
-
-### AI Model Performance Team
-
-- **Greenwashing Detection Model Refinement**  
-  Work on improving the core AI model's accuracy in identifying various types of greenwashing (e.g., vagueness, hidden trade-offs, irrelevant claims).
-
-- **False Positive/Negative Reduction**  
-  Implement strategies to minimize misclassifications, ensuring the model is precise without being overly cautious or missing actual greenwashing.
-
-- **Explanation Generation Logic**  
-  Collaborate closely with the Chatbot team to ensure the model can produce concise and accurate explanations that the chatbot can then convey. This is crucial for the "Explainable AI" aspect.
-
-- **Model Performance Tracking**  
-  Set up metrics and a testing framework to consistently evaluate and report on model improvements.
-
----
-### Chatbot Team
-
-- **Chatbot Integration with XAI Explanations**  
-  This is key! Focus on enabling the chatbot to effectively retrieve and present the explanations generated by the AI Model Performance team. The chatbot should translate complex AI rationales into understandable language for the user.
-
-- **User Query Interpretation**  
-  Enhance the chatbot's ability to understand user questions about greenwashing claims and provide relevant, AI-backed answers or direct them to specific explanations.
-
-- **Interactive Explanation Flow**  
-  Design how the chatbot guides a user through an explanation (e.g., "Would you like to know which words triggered this flag?" or "Here are the top three reasons this claim is suspicious.").
-
-- **Feedback Mechanism**  
-  Implement a way for users to give feedback on the chatbot's explanations, which can then inform future model improvements.

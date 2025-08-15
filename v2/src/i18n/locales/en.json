@@ -1,0 +1,142 @@
+{
+  "nav": {
+    "title": "Greenwashing Detection System",
+    "dashboard": "Dashboard",
+    "upload": "Upload Analysis",
+    "newAnalysis": "New Analysis"
+  },
+  "dashboard": {
+    "title": "ESG Greenwashing Detection Dashboard",
+    "subtitle": "AI-Driven · Data Transparency · Explainable Decisions · Professional Analysis",
+    "highRiskCompanies": "High-Risk Companies",
+    "pendingReports": "Reports to Review",
+    "riskTrend": "Greenwashing Risk Trend",
+    "newInLast7Days": "New in last 7 days",
+    "highPriority": "High Priority",
+    "companyRanking": "Company Risk Ranking",
+    "uploadNewReport": "Upload New Report",
+    "companyName": "Company Name",
+    "riskScore": "Greenwashing Risk Score",
+    "mainType": "Main Greenwashing Type",
+    "analysisDate": "Recent Analysis Date",
+    "actions": "Actions",
+    "viewDetails": "View Details",
+    "viewAnalysis": "View {{company}} analysis report"
+  },
+  "upload": {
+    "title": "Upload ESG Report",
+    "subtitle": "Upload your company's ESG report for AI-powered greenwashing analysis",
+    "selectFile": "Select File",
+    "dragDrop": "or drag and drop",
+    "fileTypes": "PDF, DOC, DOCX up to 10MB",
+    "companyName": "Company Name",
+    "companyNamePlaceholder": "Enter company name",
+    "language": "Document Language (Optional)",
+    "languagePlaceholder": "Select language",
+    "sessionId": "Session ID",
+    "sessionIdDescription": "Unique identifier for this analysis session",
+    "uploadButton": "Upload and Analyze",
+    "uploading": "Uploading...",
+    "noFileSelected": "No file selected"
+  },
+  "chat": {
+    "title": "ESG Analysis Assistant",
+    "placeholder": "Ask questions about ESG analysis, greenwashing detection, or company reports...",
+    "send": "Send",
+    "validate": "Validate",
+    "validating": "Validating...",
+    "openAnalysis": "Open Analysis",
+    "closeAnalysis": "Close Analysis",
+    "openChat": "Open Chat",
+    "close": "Close"
+  },
+  "greenwashingTypes": {
+    "vagueStatements": "Vague Statements",
+    "lackOfMetrics": "Lack of Metrics",
+    "misleadingTerms": "Misleading Terms",
+    "insufficientVerification": "Insufficient Third-Party Verification"
+  },
+  "languages": {
+    "english": "English",
+    "italian": "Italian",
+    "german": "German"
+  },
+  "upload": {
+    "title": "Report Upload & Configuration",
+    "subtitle": "Support for PDF, DOCX and other common formats",
+    "duplicateDialog": {
+      "title": "Duplicate Analysis Detected",
+      "description": "This file has been analyzed before. Would you like to reanalyze or view existing results?",
+      "showOld": "Show existing results",
+      "reanalyze": "Yes, reanalyze"
+    },
+    "analysisTimeWarning": "ESG analysis may take longer time, please wait patiently...",
+    "reanalyzing": "Reanalyzing...",
+    "errors": {
+      "timeout": "Upload timeout, please check your network connection",
+      "connectionFailed": "Cannot connect to server, please check backend service",
+      "apiConfigError": "API configuration error, please contact administrator",
+      "reanalyzeFailed": "Reanalysis failed"
+    },
+    "selectFile": "Drag and drop files here, or click to select",
+    "analysisPriority": "Analysis Priority",
+    "priorityPlaceholder": "Select priority",
+    "urgent": "Urgent Analysis",
+    "normal": "Normal",
+    "low": "Low Priority",
+    "customRules": "Use Custom Rule Set",
+    "customRulesDesc": "Focus only on specific industry patterns",
+    "note": "Note",
+    "notePlaceholder": "Add task description (optional)",
+    "startAnalysis": "Start Analysis",
+    "uploading": "Uploading and analyzing...",
+    "selectFirstMsg": "Please select a file first",
+    "selectedFiles": "Selected: {{names}}",
+    "uploadFailed": "Upload failed ({{status}})",
+    "analysisCreated": "Analysis created, generating report...",
+    "backendNotConnected": "Backend not connected, local preview report created",
+    "uploadFailedRetry": "Upload failed, please try again later"
+  },
+  "company": {
+    "title": "Company Analysis Report",
+    "subtitle": "Evidence-based explainable assessment",
+    "overallRisk": "Overall Risk Score & Overview",
+    "riskLevel": "Risk Level",
+    "high": "High",
+    "medium": "Medium", 
+    "low": "Low",
+    "viewEvidence": "View Evidence",
+    "nextSteps": "Next Steps",
+    "riskBreakdown": "Risk Type Breakdown",
+    "evidenceChain": "Evidence Chain & Original Quotes",
+    "reason": "Reason: {{reason}}",
+    "jumpToOriginal": "Jump to Original Report",
+    "externalVerification": "External Verification & Background Info",
+    "recommendedActions": "Recommended Next Steps",
+    "action1": "Request and review quantifiable metrics (baseline year, coverage, target values).",
+    "action2": "Verify third-party verification reports, focusing on methodology and boundary setting.",
+    "action3": "Compare with industry best practice reports to identify gaps.",
+    "addReports": "Add More Reports",
+    "exportPdf": "Export PDF"
+  },
+  "chatbot": {
+    "title": "ESG Analysis Assistant",
+    "analysisPanel": "Analysis Panel",
+    "explainableAi": "Explainable AI",
+    "placeholder": "Ask questions about ESG analysis, greenwashing detection, or company reports...",
+    "welcome": "Hello! I'm your ESG Analysis Assistant. I can help you analyze company reports and answer professional questions. What would you like to know?",
+    "analyzing": "AI is analyzing...",
+    "connectionFailed": "Connection failed",
+    "localReplyEnabled": "Local smart reply enabled",
+    "enterTip": "Tip: Shift + Enter for new line, Enter to send",
+    "connectedToDb": "Smart assistant connected to full project database"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save"
+  }
+}
