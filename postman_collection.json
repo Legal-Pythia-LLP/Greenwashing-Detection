@@ -1,0 +1,78 @@
+{
+  "info": {
+    "name": "Summer ESG Report API",
+    "description": "API集合用于测试报告上传和分析功能",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "上传报告",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": "/path/to/report.pdf"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/upload",
+          "host": ["{{base_url}}"],
+          "path": ["upload"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "获取报告",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/report/123",
+          "host": ["{{base_url}}"],
+          "path": ["report", "123"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "仪表盘统计",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/dashboard/stats",
+          "host": ["{{base_url}}"],
+          "path": ["dashboard", "stats"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "公司风险排名",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/dashboard/companies",
+          "host": ["{{base_url}}"],
+          "path": ["dashboard", "companies"]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    }
+  ]
+}

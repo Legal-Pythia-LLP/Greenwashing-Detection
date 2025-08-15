@@ -1,81 +1,89 @@
-Test
-# Summer-Project
+# ESG Greenwashing Analysis API
 
-## 題目：
+本项目基于 FastAPI、LangChain、OpenAI/ClimateBERT 等，提供 ESG 漂绿分析自动化 API，现已实现彻底模块化，结构清晰，易于维护和扩展。
 
-Exciting news from Legal Pythia! Since you already know us, you'll be stoked to hear we're offering a super cool project: we're looking for awesome Computer Science students to help us supercharge our Explainable AI (XAI) chatbot that detects greenwashing in financial documents! 🤖🌿💰
+## 技术栈
+- 后端: FastAPI, Uvicorn
+- AI: OpenAI, ClimateBERT, LangChain, LangGraph
+- 数据库: SQLite (内置), FAISS (向量存储)
+- 前端: React (v2目录下)
+- 工具: Pydantic, BeautifulSoup (爬虫)
 
-This project is all about making our AI even smarter. You'll dive into:
+## 主要功能
+- ESG 报告上传与自动分析（支持 PDF）
+- LangGraph 工作流与 Agent 智能推理  
+- 新闻验证与漂绿指标量化
+- 多模型与自定义工具扩展
+- 完全分层架构设计
 
-- Improving how our AI explains itself: Making explanations clearer, more detailed, and maybe even visual!
-- Refining detection: Helping our AI get better at spotting those really subtle greenwashing tricks.
-- Building a slick user interface: Designing a web dashboard that makes our tech easy for financial pros to use.
-- (Optional stretch goal) Exploring other languages: Seeing if our greenwashing detection can work in German!
+## 快速开始
 
-This is a fantastic chance to apply your AI and UX skills to a real-world problem with a huge impact on trust and transparency in the financial world. If you're keen to jump on board and help us make a difference, let me know!
+### 环境配置
+建议使用 Python 3.10+
 
----
+```bash
+# 创建虚拟环境
+python -m venv venv
 
-## 需求：
+# 激活虚拟环境 (Windows)
+venv\Scripts\activate
 
-### Advanced Explainability Features
+# 安装依赖
+pip install -r requirements.txt
+```
 
-Develop more granular and interactive explanations. For example, can the chatbot not just say "this claim is vague," but highlight the exact vague phrases, suggest clearer alternatives, or cite counter-evidence from other parts of the document or external data? Could they build a simple visualization for the explanation?
+### 数据库初始化
+```bash
+python -m app.init_db
+```
 
-### Targeted Greenwashing Typologies
+### 启动服务
+```bash
+# 开发模式
+uvicorn app.main:app --reload
 
-Research and implement detection for specific, subtle greenwashing tactics prevalent in financial disclosures (e.g., "green-wishing" - aspirational but unbacked claims, "cherry-picking" data, "hidden trade-offs"). This would require deeper NLP model fine-tuning.
+# 生产模式
+python -m app.main
+```
 
-### Intuitive User Interface/Dashboard
+## 项目结构
 
-Design and prototype an interactive web interface or dashboard where financial users (e.g., ESG analysts, compliance officers) can easily upload documents, receive risk scores, explore flagged claims with their XAI explanations, and generate summary reports.
+```
+summer-pro/
+├── app/                  # 后端核心代码
+│   ├── api/              # API路由
+│   ├── core/             # 业务逻辑与工具
+│   ├── models/           # 数据模型
+│   ├── config.py         # 配置管理
+│   └── main.py           # 应用入口
+├── v2/                   # 前端React应用
+├── data/                 # 数据库文件
+├── pdfs/                 # 示例ESG报告
+├── uploads/              # 上传文件存储
+├── tests/                # 单元测试
+└── webscraper/           # 新闻爬虫
+```
 
-### Multilingual Pilot (if applicable)
+## API文档
+访问本地运行的API文档:
+- Swagger UI: http://localhost:8000/docs  
+- Redoc: http://localhost:8000/redoc
 
-Explore the feasibility or a basic implementation of greenwashing detection in a specific non-English financial document language, showcasing the potential for broader market reach.
+## 环境变量配置
+复制`.env.example`为`.env`并填写您的API密钥:
+```ini
+OPENAI_API_KEY=your_key
+CLIMATEBERT_API_KEY=your_key
+AZURE_ENDPOINT=your_endpoint
+```
 
----
+## 贡献指南
+欢迎通过issue或PR贡献代码:
+1. Fork本仓库
+2. 创建特性分支 (`git checkout -b feature/your-feature`)
+3. 提交更改 (`git commit -m 'Add some feature'`)
+4. 推送到分支 (`git push origin feature/your-feature`)
+5. 创建Pull Request
 
-## Tasks:
-
-### UI Team (All)
-
-- **Design Explainability Visualizations**  
-  Focus on intuitive ways to show why a claim is flagged (e.g., highlighting specific phrases, displaying confidence scores, simple bar charts for contributing factors).
-
-- **Chatbot User Interface (UI/UX)**  
-  Design a seamless and user-friendly interface for the chatbot, ensuring natural conversation flow and clear presentation of its responses and explanations.
-
-- **Overall Dashboard Refinement**  
-  Improve the general aesthetic and navigability of the main dashboard where analysis results are displayed.
-
----
-
-### AI Model Performance Team
-
-- **Greenwashing Detection Model Refinement**  
-  Work on improving the core AI model's accuracy in identifying various types of greenwashing (e.g., vagueness, hidden trade-offs, irrelevant claims).
-
-- **False Positive/Negative Reduction**  
-  Implement strategies to minimize misclassifications, ensuring the model is precise without being overly cautious or missing actual greenwashing.
-
-- **Explanation Generation Logic**  
-  Collaborate closely with the Chatbot team to ensure the model can produce concise and accurate explanations that the chatbot can then convey. This is crucial for the "Explainable AI" aspect.
-
-- **Model Performance Tracking**  
-  Set up metrics and a testing framework to consistently evaluate and report on model improvements.
-
----
-### Chatbot Team
-
-- **Chatbot Integration with XAI Explanations**  
-  This is key! Focus on enabling the chatbot to effectively retrieve and present the explanations generated by the AI Model Performance team. The chatbot should translate complex AI rationales into understandable language for the user.
-
-- **User Query Interpretation**  
-  Enhance the chatbot's ability to understand user questions about greenwashing claims and provide relevant, AI-backed answers or direct them to specific explanations.
-
-- **Interactive Explanation Flow**  
-  Design how the chatbot guides a user through an explanation (e.g., "Would you like to know which words triggered this flag?" or "Here are the top three reasons this claim is suspicious.").
-
-- **Feedback Mechanism**  
-  Implement a way for users to give feedback on the chatbot's explanations, which can then inform future model improvements.
+## 维护者
+- [qouli-q](https://github.com/qouli-q)

@@ -1,21 +1,8 @@
-# 忽略虚拟环境和下载目录
-/docs/venv/
-/docs/downloads/
-
-# 忽略 IDE 配置
-.idea/
-/docs/.idea/
-
-# 忽略旧的 .py 文件（通配符更灵活）
-/docs/*_old.py
-
-# 忽略 Python 缓存
+# Byte-compiled / optimized / DLL files
 __pycache__/
-**/__pycache__/
-*.pyc
-*.pyo
 
-docs/tests/
-docs/PROJECT_STRUCTURE.md
-docs/PROJECT_OVERVIEW.md
-docs/WORKFLOW_OPTIMIZATION.md
+
+venv/
+downloads/
+v2/node_modules/
+reports/
