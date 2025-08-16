@@ -10,6 +10,7 @@ import { FloatingChatbot } from "@/components/FloatingChatbot";
 import { ResponsiveContainer, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Tooltip } from "recharts";
 import { useQuery } from "@tanstack/react-query";
 import { APIService } from "../services/api.service";
+import ReactMarkdown from "react-markdown";
 
 /**
  * 从 final_synthesis 中提取指定序号的部分内容
@@ -572,7 +573,13 @@ return (
                   </Badge>
                 </div>
                 <div className="mt-2 leading-relaxed">
-                  {view.summary ? <p>{view.summary}</p> : <p className="text-muted-foreground">暂无摘要信息</p>}
+                  {view.summary ? (
+                    <div className="prose prose-sm max-w-none">
+                      <ReactMarkdown>{view.summary}</ReactMarkdown>
+                    </div>
+                  ) : (
+                    <p className="text-muted-foreground">暂无摘要信息</p>
+                  )}
                 </div>
                 <div className="mt-3 flex gap-2">
                   <Button asChild><a href="#evidence">{t('company.viewEvidence')}</a></Button>
@@ -622,7 +629,9 @@ return (
           </CardHeader>
           <CardContent>
             {Array.isArray(view?.evidenceGroups) && view.evidenceGroups.length > 0 ? (
-              <div className="whitespace-pre-line">{view.evidenceGroups[0].items[0].quote}</div>
+              <div className="prose prose-sm max-w-none">
+                <ReactMarkdown>{view.evidenceGroups[0].items[0].quote}</ReactMarkdown>
+              </div>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 <p>暂无报告内容</p>
@@ -638,13 +647,15 @@ return (
               <CardTitle>3.Specific Recommendations for Stakeholders</CardTitle>
             </CardHeader>
             <CardContent>
-              {Array.isArray(view?.external) && view.external.length > 0 ? (
-                <div className="whitespace-pre-line">{view.external[0]}</div>
-              ) : (
-                <div className="text-center py-4 text-muted-foreground">
-                  <p>暂无报告内容</p>
-                </div>
-              )}
+                          {Array.isArray(view?.external) && view.external.length > 0 ? (
+              <div className="prose prose-sm max-w-none">
+                <ReactMarkdown>{view.external[0]}</ReactMarkdown>
+              </div>
+            ) : (
+              <div className="text-center py-4 text-muted-foreground">
+                <p>暂无报告内容</p>
+              </div>
+            )}
             </CardContent>
           </Card>
 
@@ -655,7 +666,9 @@ return (
             </CardHeader>
             <CardContent>
               {view.recommendedSteps ? (
-                <div className="whitespace-pre-line">{view.recommendedSteps}</div>
+                <div className="prose prose-sm max-w-none">
+                  <ReactMarkdown>{view.recommendedSteps}</ReactMarkdown>
+                </div>
               ) : (
                 <p>暂无建议</p>
               )}

@@ -70,7 +70,7 @@ export function ChatContainer({
                 <div id='currentMessage' className='mb-3 flex justify-start' data-role='system'>
                   <div className='max-w-[600px] break-words'>
                     <div className='font-semibold mb-1 text-left ml-3'>{t('chatbot.explainableAi')}</div>
-                    <div className='whitespace-pre-line break-words border border-border p-3 rounded-3xl w-auto text-left'>
+                    <div className='break-words border border-border p-3 rounded-3xl w-auto text-left'>
                       <div className='markdown-container'>
                         <ReactMarkdown
                           className="prose max-w-none 

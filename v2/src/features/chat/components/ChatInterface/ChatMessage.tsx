@@ -28,7 +28,7 @@ export function ChatMessage({ message, currentMessage, isError, error }: ChatMes
           {message.role === 'user' ? 'You' : 'Explainable AI'}
         </div>
 
-        <div className={`whitespace-pre-line break-words border border-border p-3 rounded-3xl w-auto text-left`}>
+        <div className={`break-words border border-border p-3 rounded-3xl w-auto text-left`}>
           <div className='markdown-container'>
             <ReactMarkdown
               className="prose max-w-none 
