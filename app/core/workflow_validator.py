@@ -1,6 +1,6 @@
-"""
-优化的工作流验证系统
-用于协调和管理不同的验证工具，提供更好的错误处理、并行处理和结果聚合
+""" 
+Optimized Workflow Validation System
+Coordinates and manages different validation tools, providing better error handling, parallel processing, and result aggregation
 """
 
 import asyncio
@@ -23,7 +23,7 @@ from langchain.schema import HumanMessage
 
 
 class ValidationStatus(Enum):
-    """验证状态枚举"""
+    """Validation status enumeration"""
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -33,7 +33,7 @@ class ValidationStatus(Enum):
 
 @dataclass
 class ValidationResult:
-    """验证结果数据类"""
+    """Validation result data class"""
     tool_name: str
     status: ValidationStatus
     result: Any
@@ -43,7 +43,7 @@ class ValidationResult:
 
 
 class WorkflowValidator:
-    """工作流验证器 - 协调和管理多个验证工具"""
+    """Workflow Validator - coordinates and manages multiple validation tools"""
     
     def __init__(self, company_name: str, vector_store=None):
         self.company_name = company_name
@@ -52,7 +52,7 @@ class WorkflowValidator:
         self.executor = ThreadPoolExecutor(max_workers=3)
         self.logger = logging.getLogger(__name__)
         
-        # 初始化验证工具
+        # Initialize validation tools
         self.tools = {
             "wikirate": WikirateValidationTool(company_name),
             "news": NewsValidationTool(company_name),
@@ -62,19 +62,19 @@ class WorkflowValidator:
     
     async def run_validation_workflow(self, document_analysis: str, extracted_metrics: str = None) -> Dict[str, Any]:
         """
-        运行完整的验证工作流
+        Run the full validation workflow
         
         Args:
-            document_analysis: 文档分析结果
-            extracted_metrics: 提取的指标数据
+            document_analysis: Results from document analysis
+            extracted_metrics: Extracted metric data
             
         Returns:
-            包含所有验证结果的字典
+            Dictionary containing all validation results
         """
         start_time = time.time()
         
         try:
-            # 并行执行验证任务
+            # Execute validation tasks in parallel
             tasks = [
                 self._validate_wikirate(extracted_metrics),
                 self._validate_news(document_analysis),
@@ -82,10 +82,10 @@ class WorkflowValidator:
                 self._analyze_document(document_analysis)
             ]
             
-            # 等待所有任务完成
+            # Wait for all tasks to complete
             results = await asyncio.gather(*tasks, return_exceptions=True)
             
-            # 处理结果
+            # Process results
             workflow_result = self._process_workflow_results(results)
             workflow_result["execution_time"] = time.time() - start_time
             
@@ -99,12 +99,12 @@ class WorkflowValidator:
             }
     
     async def _validate_wikirate(self, extracted_metrics: str = None) -> ValidationResult:
-        """Wikirate验证"""
+        """Wikirate validation"""
         start_time = time.time()
         
         try:
             if not extracted_metrics:
-                # 如果没有提供指标，从文档分析中提取
+                # If metrics are not provided, extract from document analysis
                 extracted_metrics = await self._extract_metrics_from_analysis()
             
             result = await self._run_tool_async(
@@ -129,11 +129,11 @@ class WorkflowValidator:
             )
     
     async def _validate_news(self, document_analysis: str) -> ValidationResult:
-        """新闻验证"""
+        """News validation"""
         start_time = time.time()
         
         try:
-            # 提取需要验证的声明
+            # Extract claims to be validated
             claims = await self._extract_claims_from_analysis(document_analysis)
             
             result = await self._run_tool_async(
@@ -158,7 +158,7 @@ class WorkflowValidator:
             )
     
     async def _calculate_metrics(self, document_analysis: str) -> ValidationResult:
-        """计算指标"""
+        """Calculate metrics"""
         start_time = time.time()
         
         try:
@@ -184,7 +184,7 @@ class WorkflowValidator:
             )
     
     async def _analyze_document(self, document_analysis: str) -> ValidationResult:
-        """文档分析"""
+        """Document analysis"""
         start_time = time.time()
         
         try:
@@ -197,7 +197,7 @@ class WorkflowValidator:
                     execution_time=time.time() - start_time
                 )
             
-            # 生成分析查询
+            # Generate analysis query
             analysis_query = await self._generate_analysis_query(document_analysis)
             
             result = await self._run_tool_async(
@@ -222,12 +222,12 @@ class WorkflowValidator:
             )
     
     async def _run_tool_async(self, tool_func, *args):
-        """异步运行工具函数"""
+        """Run tool function asynchronously"""
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(self.executor, tool_func, *args)
     
     async def _extract_metrics_from_analysis(self) -> str:
-        """从文档分析中提取指标"""
+        """Extract metrics from document analysis"""
         prompt = f"""
         Extract specific numerical ESG metrics and values from the following analysis:
 
@@ -247,7 +247,7 @@ class WorkflowValidator:
         return response.content
     
     async def _extract_claims_from_analysis(self, document_analysis: str) -> str:
-        """从文档分析中提取声明"""
+        """Extract claims from document analysis"""
         prompt = f"""
         Extract the key ESG claims and statements from the following analysis:
 
@@ -260,7 +260,7 @@ class WorkflowValidator:
         return response.content
     
     async def _generate_analysis_query(self, document_analysis: str) -> str:
-        """生成文档分析查询"""
+        """Generate document analysis query"""
         prompt = f"""
         Based on the following document analysis, generate a focused query for greenwashing detection:
 
@@ -273,7 +273,7 @@ class WorkflowValidator:
         return response.content
     
     def _process_workflow_results(self, results: List[ValidationResult]) -> Dict[str, Any]:
-        """处理工作流结果"""
+        """Process workflow results"""
         processed_results = {
             "overall_status": "completed",
             "successful_validations": 0,
@@ -305,13 +305,13 @@ class WorkflowValidator:
                 
                 processed_results["total_execution_time"] += result.execution_time
         
-        # 生成摘要
+        # Generate summary
         processed_results["summary"] = self._generate_summary(processed_results["results"])
         
         return processed_results
     
     def _generate_summary(self, results: Dict[str, Any]) -> Dict[str, Any]:
-        """生成验证摘要"""
+        """Generate validation summary"""
         summary = {
             "total_tools": len(results),
             "successful_tools": 0,
@@ -329,7 +329,7 @@ class WorkflowValidator:
             elif result["status"] == "skipped":
                 summary["skipped_tools"] += 1
         
-        # 生成关键发现
+        # Generate key findings
         if "wikirate" in results and results["wikirate"]["status"] == "completed":
             summary["key_findings"].append("Wikirate data validation completed")
         
@@ -339,7 +339,7 @@ class WorkflowValidator:
         if "metrics" in results and results["metrics"]["status"] == "completed":
             summary["key_findings"].append("Greenwashing metrics calculated")
         
-        # 生成建议
+        # Generate recommendations
         if summary["failed_tools"] > 0:
             summary["recommendations"].append("Some validation tools failed - consider manual review")
         
@@ -350,21 +350,21 @@ class WorkflowValidator:
 
 
 class ValidationOrchestrator:
-    """验证编排器 - 高级工作流管理"""
+    """Validation Orchestrator - advanced workflow management"""
     
     def __init__(self, company_name: str, vector_store=None):
         self.validator = WorkflowValidator(company_name, vector_store)
         self.logger = logging.getLogger(__name__)
     
     async def run_comprehensive_validation(self, document_analysis: str, extracted_metrics: str = None) -> Dict[str, Any]:
-        """运行综合验证"""
+        """Run comprehensive validation"""
         try:
-            # 运行基础验证
+            # Run base validation
             workflow_results = await self.validator.run_validation_workflow(
                 document_analysis, extracted_metrics
             )
             
-            # 添加高级分析
+            # Add enhanced analysis
             enhanced_results = await self._enhance_results(workflow_results, document_analysis)
             
             return enhanced_results
@@ -377,22 +377,22 @@ class ValidationOrchestrator:
             }
     
     async def _enhance_results(self, workflow_results: Dict[str, Any], document_analysis: str) -> Dict[str, Any]:
-        """增强验证结果"""
+        """Enhance validation results"""
         enhanced_results = workflow_results.copy()
         
-        # 添加置信度评分
+        # Add confidence score
         enhanced_results["confidence_score"] = await self._calculate_confidence_score(workflow_results)
         
-        # 添加风险评级
+        # Add risk rating
         enhanced_results["risk_rating"] = await self._calculate_risk_rating(workflow_results)
         
-        # 添加建议
+        # Add recommendations
         enhanced_results["recommendations"] = await self._generate_recommendations(workflow_results)
         
         return enhanced_results
     
     async def _calculate_confidence_score(self, workflow_results: Dict[str, Any]) -> float:
-        """计算置信度评分"""
+        """Calculate confidence score"""
         successful_tools = workflow_results["summary"]["successful_tools"]
         total_tools = workflow_results["summary"]["total_tools"]
         
@@ -401,34 +401,34 @@ class ValidationOrchestrator:
         
         base_score = (successful_tools / total_tools) * 100
         
-        # 根据工具类型调整评分
+        # Adjust score based on tool type
         results = workflow_results["results"]
         if "wikirate" in results and results["wikirate"]["status"] == "completed":
-            base_score += 10  # Wikirate验证很重要
+            base_score += 10  # Wikirate validation is important
         if "news" in results and results["news"]["status"] == "completed":
-            base_score += 5   # 新闻验证提供额外支持
+            base_score += 5   # News validation provides additional support
         
         return min(base_score, 100.0)
     
     async def _calculate_risk_rating(self, workflow_results: Dict[str, Any]) -> str:
-        """计算风险评级"""
+        """Calculate risk rating"""
         results = workflow_results["results"]
         
-        # 检查关键验证结果
+        # Check key validation results
         risk_factors = 0
         
         if "wikirate" in results and results["wikirate"]["status"] == "completed":
-            # 分析Wikirate结果中的风险指标
+            # Analyze risk indicators in Wikirate results
             wikirate_result = results["wikirate"]["result"]
             if "verification_score" in str(wikirate_result):
-                # 这里可以添加更复杂的风险分析逻辑
+                # More complex risk analysis logic can be added here
                 pass
         
         if "metrics" in results and results["metrics"]["status"] == "completed":
-            # 分析指标计算结果
+            # Analyze metrics calculation results
             metrics_result = results["metrics"]["result"]
             if "overall_greenwashing_score" in str(metrics_result):
-                # 这里可以添加更复杂的风险分析逻辑
+                # More complex risk analysis logic can be added here
                 pass
         
         if risk_factors >= 3:
@@ -439,11 +439,11 @@ class ValidationOrchestrator:
             return "LOW"
     
     async def _generate_recommendations(self, workflow_results: Dict[str, Any]) -> List[str]:
-        """生成建议"""
+        """Generate recommendations"""
         recommendations = []
         results = workflow_results["results"]
         
-        # 基于验证结果生成建议
+        # Generate recommendations based on validation results
         if "wikirate" in results:
             if results["wikirate"]["status"] == "failed":
                 recommendations.append("Wikirate validation failed - consider manual data verification")
@@ -459,7 +459,7 @@ class ValidationOrchestrator:
         if "metrics" in results and results["metrics"]["status"] == "completed":
             recommendations.append("Greenwashing metrics calculated - review detailed scores")
         
-        # 基于整体结果生成建议
+        # Generate recommendations based on overall results
         if workflow_results["summary"]["failed_tools"] > 0:
             recommendations.append("Some validation tools failed - consider running individual validations")
         
@@ -469,7 +469,7 @@ class ValidationOrchestrator:
         return recommendations
 
 
-# 使用示例
+# Usage example
 async def run_optimized_validation_workflow(
     company_name: str, 
     document_analysis: str, 
@@ -477,16 +477,16 @@ async def run_optimized_validation_workflow(
     extracted_metrics: str = None
 ) -> Dict[str, Any]:
     """
-    运行优化的验证工作流
+    Run optimized validation workflow
     
     Args:
-        company_name: 公司名称
-        document_analysis: 文档分析结果
-        vector_store: 向量存储
-        extracted_metrics: 提取的指标数据
+        company_name: Name of the company
+        document_analysis: Document analysis results
+        vector_store: Vector store
+        extracted_metrics: Extracted metric data
         
     Returns:
-        包含所有验证结果的字典
+        Dictionary containing all validation results
     """
     orchestrator = ValidationOrchestrator(company_name, vector_store)
-    return await orchestrator.run_comprehensive_validation(document_analysis, extracted_metrics) 
+    return await orchestrator.run_comprehensive_validation(document_analysis, extracted_metrics)

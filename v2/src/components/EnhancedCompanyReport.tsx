@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -48,11 +48,11 @@ export function EnhancedCompanyReport({ company }: EnhancedCompanyReportProps) {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5" />
-              执行摘要
+              Executive Summary
             </CardTitle>
-                      <Badge variant={riskBadgeVariant === "accent" ? "secondary" : riskBadgeVariant} className="text-lg px-3 py-1">
-                {company.score}/100
-              </Badge>
+            <Badge variant={riskBadgeVariant === "accent" ? "secondary" : riskBadgeVariant} className="text-lg px-3 py-1">
+              {company.score}/100
+            </Badge>
           </div>
         </CardHeader>
         <CardContent>
@@ -60,9 +60,9 @@ export function EnhancedCompanyReport({ company }: EnhancedCompanyReportProps) {
           <div className="mt-4 flex gap-2">
             <Button>
               <FileText className="h-4 w-4 mr-2" />
-              下载完整报告
+              Download Full Report
             </Button>
-            <Button variant="outline">上传更多文档</Button>
+            <Button variant="outline">Upload More Documents</Button>
           </div>
         </CardContent>
       </Card>
@@ -72,7 +72,7 @@ export function EnhancedCompanyReport({ company }: EnhancedCompanyReportProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5" />
-            关键发现与证据链
+            Key Findings & Evidence
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -82,18 +82,18 @@ export function EnhancedCompanyReport({ company }: EnhancedCompanyReportProps) {
               {group.items.map((item, itemIdx) => (
                 <div key={itemIdx} className="border rounded-lg p-4 space-y-3">
                   <div className="bg-muted p-3 rounded border-l-4 border-l-accent">
-                    <p className="font-medium mb-1">原文引用:</p>
+                    <p className="font-medium mb-1">Original Quote:</p>
                     <p className="italic">"{item.quote}"</p>
                   </div>
                   
                   <div>
-                    <p className="font-medium mb-1">分析说明:</p>
+                    <p className="font-medium mb-1">Analysis Notes:</p>
                     <p className="text-muted-foreground">{item.why}</p>
                   </div>
 
                   {item.score && (
                     <div className="flex items-center gap-2">
-                      <span className="font-medium">漂绿可能性评分:</span>
+                      <span className="font-medium">Greenwashing Likelihood Score:</span>
                       <Badge variant={item.score >= 70 ? "destructive" : "secondary"}>
                         {item.score}/100
                       </Badge>
@@ -104,7 +104,7 @@ export function EnhancedCompanyReport({ company }: EnhancedCompanyReportProps) {
                     <Alert>
                       <CheckCircle className="h-4 w-4" />
                       <AlertDescription>
-                        <strong>外部验证结果:</strong> {item.verification}
+                        <strong>External Verification:</strong> {item.verification}
                       </AlertDescription>
                     </Alert>
                   )}
@@ -113,7 +113,7 @@ export function EnhancedCompanyReport({ company }: EnhancedCompanyReportProps) {
                     <Alert>
                       <ExternalLink className="h-4 w-4" />
                       <AlertDescription>
-                        <strong>需进一步验证:</strong> {item.further_verification}
+                        <strong>Further Verification Needed:</strong> {item.further_verification}
                       </AlertDescription>
                     </Alert>
                   )}
@@ -121,7 +121,7 @@ export function EnhancedCompanyReport({ company }: EnhancedCompanyReportProps) {
               ))}
             </div>
           )) || (
-            <p className="text-muted-foreground">暂无详细证据链数据</p>
+            <p className="text-muted-foreground">No detailed evidence data available</p>
           )}
         </CardContent>
       </Card>
@@ -130,7 +130,7 @@ export function EnhancedCompanyReport({ company }: EnhancedCompanyReportProps) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>漂绿类型评估</CardTitle>
+            <CardTitle>Greenwashing Type Assessment</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -154,7 +154,7 @@ export function EnhancedCompanyReport({ company }: EnhancedCompanyReportProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle>风险雷达图</CardTitle>
+            <CardTitle>Risk Radar Chart</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-64">
@@ -164,7 +164,7 @@ export function EnhancedCompanyReport({ company }: EnhancedCompanyReportProps) {
                   <PolarAngleAxis dataKey="type" className="text-xs" />
                   <PolarRadiusAxis angle={90} domain={[0, 100]} tickCount={5} className="text-xs" />
                   <Radar
-                    name="风险评分"
+                    name="Risk Score"
                     dataKey="value"
                     stroke="hsl(var(--primary))"
                     fill="hsl(var(--primary))"
@@ -181,40 +181,40 @@ export function EnhancedCompanyReport({ company }: EnhancedCompanyReportProps) {
       {/* Stakeholder Recommendations */}
       <Card>
         <CardHeader>
-          <CardTitle>利益相关者建议</CardTitle>
+          <CardTitle>Stakeholder Recommendations</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <h4 className="font-semibold text-primary">投资者</h4>
+              <h4 className="font-semibold text-primary">Investors</h4>
               <ul className="text-sm space-y-1 text-muted-foreground">
-                <li>• 要求公司提供更具体的量化目标</li>
-                <li>• 关注第三方认证和验证报告</li>
-                <li>• 建立ESG绩效监督机制</li>
+                <li>• Request specific quantitative targets from the company</li>
+                <li>• Focus on third-party certifications and verification reports</li>
+                <li>• Establish ESG performance monitoring mechanisms</li>
               </ul>
             </div>
             <div className="space-y-2">
-              <h4 className="font-semibold text-primary">监管机构</h4>
+              <h4 className="font-semibold text-primary">Regulators</h4>
               <ul className="text-sm space-y-1 text-muted-foreground">
-                <li>• 加强信息披露规范要求</li>
-                <li>• 建立漂绿行为处罚机制</li>
-                <li>• 推动行业标准化进程</li>
+                <li>• Strengthen disclosure requirements</li>
+                <li>• Establish penalties for greenwashing behavior</li>
+                <li>• Promote industry standardization processes</li>
               </ul>
             </div>
             <div className="space-y-2">
-              <h4 className="font-semibold text-primary">企业管理层</h4>
+              <h4 className="font-semibold text-primary">Corporate Management</h4>
               <ul className="text-sm space-y-1 text-muted-foreground">
-                <li>• 建立透明的ESG数据管理体系</li>
-                <li>• 定期进行第三方审计</li>
-                <li>• 避免使用模糊或误导性表述</li>
+                <li>• Implement transparent ESG data management systems</li>
+                <li>• Conduct regular third-party audits</li>
+                <li>• Avoid vague or misleading statements</li>
               </ul>
             </div>
             <div className="space-y-2">
-              <h4 className="font-semibold text-primary">分析师</h4>
+              <h4 className="font-semibold text-primary">Analysts</h4>
               <ul className="text-sm space-y-1 text-muted-foreground">
-                <li>• 重点关注数据可验证性</li>
-                <li>• 评估ESG目标的现实性</li>
-                <li>• 跟踪长期绩效表现</li>
+                <li>• Focus on data verifiability</li>
+                <li>• Assess feasibility of ESG targets</li>
+                <li>• Track long-term performance</li>
               </ul>
             </div>
           </div>
@@ -225,21 +225,21 @@ export function EnhancedCompanyReport({ company }: EnhancedCompanyReportProps) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>风险评估与关注点</CardTitle>
+            <CardTitle>Risk Assessment & Concerns</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               <Alert variant={riskLevel === "high" ? "destructive" : "default"}>
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>风险等级:</strong> {riskLevel === "high" ? "高风险" : riskLevel === "medium" ? "中等风险" : "低风险"}
+                  <strong>Risk Level:</strong> {riskLevel === "high" ? "High" : riskLevel === "medium" ? "Medium" : "Low"}
                 </AlertDescription>
               </Alert>
               <div className="text-sm space-y-2 text-muted-foreground">
-                <p>• 缺乏具体量化指标可能导致投资者质疑</p>
-                <p>• 模糊表述增加监管合规风险</p>
-                <p>• 第三方验证不足影响公信力</p>
-                <p>• 需要加强数据透明度和可追溯性</p>
+                <p>• Lack of specific quantitative metrics may raise investor concerns</p>
+                <p>• Vague statements increase regulatory compliance risk</p>
+                <p>• Insufficient third-party verification affects credibility</p>
+                <p>• Need to improve data transparency and traceability</p>
               </div>
             </div>
           </CardContent>
@@ -247,7 +247,7 @@ export function EnhancedCompanyReport({ company }: EnhancedCompanyReportProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle>外部验证信息</CardTitle>
+            <CardTitle>External Verification Information</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -258,7 +258,7 @@ export function EnhancedCompanyReport({ company }: EnhancedCompanyReportProps) {
                   </div>
                 ))
               ) : (
-                <p className="text-muted-foreground text-sm">暂无外部验证信息</p>
+                <p className="text-muted-foreground text-sm">No external verification information available</p>
               )}
             </div>
           </CardContent>

@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 
 def date_calculation(delta: int) -> datetime:
     """
-    计算距离当前日期 delta 天的日期，用于新闻爬虫的时间范围。
+    Calculate the date delta days from today, used for news crawler's time range.
     """
     current_date = datetime.now()
     from_date = current_date - timedelta(days=delta)
@@ -18,15 +18,15 @@ def date_calculation(delta: int) -> datetime:
 
 def url_download(links: dict, directory: str = "downloads") -> Dict[str, str]:
     """
-    下载所有链接到本地目录，返回标题到本地文件路径的映射。
-    会自动处理文件名重复、非法字符问题，避免每次清空目录。
+    Download all links to a local directory, returning a mapping from title to local file path.
+    Handles duplicate filenames and illegal characters automatically without clearing the directory each time.
     """
     os.makedirs(directory, exist_ok=True)
     downloads_dictionary = {}
 
     try:
         for title, url in links.items():
-            # 标题转安全文件名 + 唯一哈希
+            # Safe filename + unique hash
             safe_title = "".join(char for char in title if char.isalnum())
             if not safe_title:
                 safe_title = "article"
@@ -34,7 +34,7 @@ def url_download(links: dict, directory: str = "downloads") -> Dict[str, str]:
             filename = f"{safe_title[:50]}_{title_hash}.html"
             path = os.path.join(directory, filename)
 
-            # 避免重复下载
+            # Avoid duplicate downloads
             if os.path.exists(path):
                 downloads_dictionary[title] = path
                 continue
@@ -55,32 +55,32 @@ def url_download(links: dict, directory: str = "downloads") -> Dict[str, str]:
 
 def url_validity(url: str) -> bool:
     """
-    判断URL是否为新闻/文章类型。
+    Determine if the URL is of a news/article type.
     """
     return "articles" in url or "news" in url
 
 
 def date_conversion(date: str) -> datetime:
     """
-    将爬取到的日期字符串转换为 datetime 类型。
+    Convert a scraped date string to a datetime object.
     """
     components = date.split(" ")
-    if len(components) == 3 and components[2] == "ago":  # e.g. ['8','hours','ago]
+    if len(components) == 3 and components[2] == "ago":  # e.g., ['8','hours','ago']
         if components[1] == "hours":
             return datetime.now() - timedelta(hours=int(components[0]))
         else:
             return datetime.now() - timedelta(hours=int(components[0]))
     else:
         month = datetime.strptime(components[1], "%B").month
-        if len(components) == 2:  # e.g. ['30','October']
+        if len(components) == 2:  # e.g., ['30','October']
             return datetime(datetime.now().year, month, int(components[0]))
-        else:  # e.g. #['30','October','2021']
+        else:  # e.g., ['30','October','2021']
             return datetime(int(components[2]), month, int(components[0]))
 
 
 def bbc_search(name: str) -> Dict[str, str]:
     """
-    BBC 新闻爬虫，搜索与 name 相关的新闻，下载并返回本地路径。
+    BBC news crawler: search news related to `name`, download and return local file paths.
     """
     depth = 10
     delta = 365 * 2
@@ -134,7 +134,6 @@ def bbc_search(name: str) -> Dict[str, str]:
             next_page = False
         else:
             page_count += 1
-   
             if page_count > 10:
                 break
 

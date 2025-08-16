@@ -4,93 +4,93 @@ import json
 import os
 
 def test_get_company_metrics():
-    """测试获取公司ESG指标数据的功能"""
+    """Test fetching ESG metrics data for companies"""
     
-    # 初始化客户端
+    # Initialize client
     wikirate_client = WikirateClient(WIKIRATE_API_KEY)
     
-    # 测试公司列表
+    # Test company list
     test_companies = ["Apple Inc", "Puma", "HSBC", "KPMG UNITED KINGDOM PLC"]
     
-    # 存储所有测试结果
+    # Store all test results
     all_results = {}
     
     for company_name in test_companies:
         print(f"\n{'='*60}")
-        print(f"测试公司: {company_name}")
+        print(f"Testing company: {company_name}")
         print(f"{'='*60}")
         
         try:
-            # 获取公司ESG指标数据
+            # Fetch ESG metrics data
             results = wikirate_client.get_company_metrics(company_name)
             
-            # 存储结果
+            # Store results
             all_results[company_name] = results
             
-            # 检查返回结果
+            # Check for errors
             if "error" in results:
-                print(f"❌ 错误: {results['error']}")
+                print(f"❌ Error: {results['error']}")
                 continue
             
-            # 打印基本信息
-            print(f"✅ 公司名称: {results.get('company_name')}")
-            print(f"📊 总答案数: {results.get('total_answers')}")
-            print(f"🌱 ESG指标数量: {results.get('esg_metrics_count')}")
+            # Print basic info
+            print(f"✅ Company Name: {results.get('company_name')}")
+            print(f"📊 Total Answers: {results.get('total_answers')}")
+            print(f"🌱 ESG Metrics Count: {results.get('esg_metrics_count')}")
             
-            # 打印ESG数据详情
+            # Print ESG data details
             esg_data = results.get('esg_data', [])
             if esg_data:
-                print(f"\n📋 ESG数据详情 (前5条):")
+                print(f"\n📋 ESG Data Details (first 5 records):")
                 for i, record in enumerate(esg_data[:5], 1):
-                    print(f"  {i}. 指标: {record.get('metric_name')}")
-                    print(f"     年份: {record.get('year')}")
-                    print(f"     数值: {record.get('value')}")
-                    print(f"     单位: {record.get('unit', '无')}")
+                    print(f"  {i}. Metric: {record.get('metric_name')}")
+                    print(f"     Year: {record.get('year')}")
+                    print(f"     Value: {record.get('value')}")
+                    print(f"     Unit: {record.get('unit', 'N/A')}")
                     print()
             else:
-                print("⚠️  没有找到ESG相关数据")
+                print("⚠️  No ESG data found")
             
-            # 保存单个公司结果到JSON文件
+            # Save individual company result to JSON file
             filename = f"test_results_{company_name.replace(' ', '_')}.json"
             with open(filename, 'w', encoding='utf-8') as f:
                 json.dump(results, f, ensure_ascii=False, indent=2)
-            print(f"💾 结果已保存到: {filename}")
+            print(f"💾 Results saved to: {filename}")
             
         except Exception as e:
-            print(f"❌ 测试失败: {e}")
+            print(f"❌ Test failed: {e}")
             all_results[company_name] = {"error": str(e)}
             continue
     
-    # 保存所有结果到同名文件
+    # Save all results to a single JSON file
     current_file = os.path.basename(__file__)
     json_filename = current_file.replace('.py', '.json')
     
     with open(json_filename, 'w', encoding='utf-8') as f:
         json.dump(all_results, f, ensure_ascii=False, indent=2)
     
-    print(f"\n💾 所有测试结果已保存到: {json_filename}")
+    print(f"\n💾 All test results saved to: {json_filename}")
     return all_results
 
 def test_single_company():
-    """测试单个公司的详细数据"""
+    """Test detailed data for a single company"""
     
     wikirate_client = WikirateClient(WIKIRATE_API_KEY)
     company_name = "Apple Inc"
     
     print(f"\n{'='*60}")
-    print(f"详细测试: {company_name}")
+    print(f"Detailed Test: {company_name}")
     print(f"{'='*60}")
     
     results = wikirate_client.get_company_metrics(company_name)
     
     if "error" not in results:
-        print(f"✅ 成功获取数据")
-        print(f"📊 总答案数: {results.get('total_answers')}")
-        print(f"🌱 ESG指标数: {results.get('esg_metrics_count')}")
+        print(f"✅ Successfully fetched data")
+        print(f"📊 Total Answers: {results.get('total_answers')}")
+        print(f"🌱 ESG Metrics Count: {results.get('esg_metrics_count')}")
         
-        # 显示所有ESG数据
+        # Display all ESG data
         esg_data = results.get('esg_data', [])
-        print(f"\n📋 所有ESG数据:")
+        print(f"\n📋 All ESG Data:")
         for i, record in enumerate(esg_data, 1):
             metric_name = record.get('metric_name', '')
             year = record.get('year', '')
@@ -98,15 +98,15 @@ def test_single_company():
             unit = record.get('unit', '')
             print(f"{i:2d}. {metric_name} ({year}) = {value} {unit}")
     else:
-        print(f"❌ 错误: {results['error']}")
+        print(f"❌ Error: {results['error']}")
 
 if __name__ == "__main__":
-    print("开始测试 get_company_metrics 函数...")
+    print("Starting test for get_company_metrics function...")
     
-    # 运行基本测试
+    # Run general test
     all_results = test_get_company_metrics()
     
-    # 运行详细测试
+    # Run detailed test
     # test_single_company()
     
-    print("\n测试完成!") 
+    print("\nTesting completed!")

@@ -4,10 +4,10 @@ import pandas as pd
 from dotenv import load_dotenv
 from sqlalchemy.ext.declarative import declarative_base
 
-# SQLAlchemy Base类
+# SQLAlchemy Base class
 Base = declarative_base()
 
-# 环境变量加载
+# Environment variable loading
 load_dotenv()
 
 # Environment variables
@@ -21,13 +21,13 @@ GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
 
 # Paths
-BASE_PATH = Path(__file__).parent.parent  # 指向项目根目录
-UPLOAD_DIR = BASE_PATH / "uploads"   # 上传文件保存目录
-REPORT_DIR = BASE_PATH / "reports"   # 报告文件保存目录
-DB_PATH = BASE_PATH / "data/reports.db"  # SQLite数据库路径
-COMPANIES_PATH = BASE_PATH / "data_files/companies.csv"    # 公司白名单 CSV 文件路径
+BASE_PATH = Path(__file__).parent.parent  # Point to project root directory
+UPLOAD_DIR = BASE_PATH / "uploads"   # Directory for saving uploaded files
+REPORT_DIR = BASE_PATH / "reports"   # Directory for saving report files
+DB_PATH = BASE_PATH / "data/reports.db"  # SQLite database path
+COMPANIES_PATH = BASE_PATH / "data_files/companies.csv"    # Company whitelist CSV file path
 
-# 确保目录存在
+# Ensure directories exist
 REPORT_DIR.mkdir(parents=True, exist_ok=True)
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
@@ -38,8 +38,8 @@ if COMPANIES_PATH.exists():
 else:
     VALID_COMPANIES = []
 
-# 限制上传文件类型（只允许 PDF）
+# Restrict upload file types (only allow PDF)
 VALID_UPLOAD_TYPES = ["application/pdf"] 
 
-# 数据库连接URL
+# Database connection URL
 SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_PATH}"

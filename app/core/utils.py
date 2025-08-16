@@ -80,12 +80,12 @@ def is_esg_related_llm(text: str) -> bool:
 
 def is_article_about_company(text: str, company_name: str, aliases: list) -> bool:
     prompt = f"""
-    判断以下文章是否与公司 "{company_name}" 或其别名 {aliases} 有直接关系。
+    Determine whether the following article is directly related to the company "{company_name}" or its aliases {aliases}.
 
-    文章内容：
+    Article content:
     {text[:1200]}
 
-    请只回答 YES 或 NO。
+    Please only answer YES or NO.
     """
     try:
         response = llm.invoke([HumanMessage(content=prompt)])
@@ -97,10 +97,10 @@ def is_article_about_company(text: str, company_name: str, aliases: list) -> boo
 
 def search_and_filter_news(company_name: str, max_articles: int = 5) -> Tuple[List[str], List[str]]:
     """
-    搜索相关新闻，筛选与公司和 ESG 相关的内容，返回最多 max_articles 篇
+    Search for relevant news, filter content related to the company and ESG, and return up to max_articles
     """
     aliases = generate_company_aliases(company_name)
-    print(f"[DEBUG] 使用以下别名搜索新闻: {aliases}")
+    print(f"[DEBUG] Searching news using the following aliases: {aliases}")
 
     bbc_articles, cnn_articles = {}, {}
     for alias in aliases:
@@ -118,18 +118,16 @@ def search_and_filter_news(company_name: str, max_articles: int = 5) -> Tuple[Li
             print(f"[CNN error with alias '{alias}']: {e}")
 
     all_articles = list((bbc_articles or {}).items()) + list((cnn_articles or {}).items())
-    print(f"[DEBUG] 抓取到 BBC 文章数量: {len(bbc_articles)}")
+    print(f"[DEBUG] Number of BBC articles fetched: {len(bbc_articles)}")
     for title in bbc_articles:
         print(f"  [BBC] {title}")
 
-    print(f"[DEBUG] 抓取到 CNN 文章数量: {len(cnn_articles)}")
+    print(f"[DEBUG] Number of CNN articles fetched: {len(cnn_articles)}")
     for title in cnn_articles:
         print(f"  [CNN] {title}")
     filtered_articles = []
 
-    
-
-    for title, file_path in all_articles[:100]:  # 最多评估前100篇
+    for title, file_path in all_articles[:100]:  # Evaluate up to the first 100 articles
         try:
             loader = UnstructuredHTMLLoader(file_path)
             docs = loader.load()
@@ -138,15 +136,15 @@ def search_and_filter_news(company_name: str, max_articles: int = 5) -> Tuple[Li
                 is_esg = is_esg_related_llm(doc.page_content)
 
                 if is_company and is_esg:
-                    print(f"[✅ 保留] {title} 👉 公司匹配: YES, ESG相关: YES")
+                    print(f"[Keep] {title} 👉 Company match: YES, ESG-related: YES")
                     filtered_articles.append((doc.page_content, title))
                 else:
-                    print(f"[❌ 剔除] {title} 👉 公司匹配: {'YES' if is_company else 'NO'}, ESG相关: {'YES' if is_esg else 'NO'}")
+                    print(f"[Exclude] {title} 👉 Company match: {'YES' if is_company else 'NO'}, ESG-related: {'YES' if is_esg else 'NO'}")
 
         except Exception as e:
-            print(f"[⚠️ Error loading article: {title}]: {e}")
+            print(f"[Error loading article: {title}]: {e}")
 
-    # 只取前 N 篇用于后续分析
+    # Only take the top N articles for subsequent analysis
     top_articles = filtered_articles[:max_articles]
     news_content = [item[0] for item in top_articles]
     used_titles = [item[1] for item in top_articles]

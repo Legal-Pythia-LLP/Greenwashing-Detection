@@ -12,6 +12,20 @@ import { TrendingUp, AlertTriangle, FileText } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { APIService } from "@/services/api.service";
 
+interface Stats {
+  high_risk_companies: number;
+  pending_reports: number;
+  high_priority_reports: number;
+}
+
+interface Company {
+  id: string;
+  name: string;
+  score: number;
+  type: string;
+  date: string;
+}
+
 const trendData = [
   { date: "05-01", risks: 5 },
   { date: "05-08", risks: 7 },
@@ -21,36 +35,13 @@ const trendData = [
   { date: "06-05", risks: 15 },
 ];
 
-const riskColor = (score: number) => score >= 80 ? "destructive" : "secondary";
-
-// Helper function to get greenwashing type translation key
-const getGreenwashingTypeKey = (type: string) => {
-  const typeMap: { [key: string]: string } = {
-    "模糊声明": "vagueStatements",
-    "缺乏指标": "lackOfMetrics", 
-    "误导性术语": "misleadingTerms",
-    "第三方验证不足": "insufficientVerification"
-  };
-  return typeMap[type] || type;
-};
+const riskColor = (score: number) => (score >= 80 ? "destructive" : "secondary");
 
 const Index = () => {
   const { t } = useTranslation();
-  
-  const [stats, setStats] = useState<{
-    high_risk_companies: number;
-    pending_reports: number;
-    high_priority_reports: number;
-  } | null>(null);
-  
-  const [companies, setCompanies] = useState<Array<{
-    id: string;
-    name: string;
-    score: number;
-    type: string;
-    date: string;
-  }> | null>(null);
 
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -58,20 +49,18 @@ const Index = () => {
       try {
         setLoading(true);
         const data = await APIService.getDashboardData();
+
         if (data) {
-          setStats(data.stats || {
+          setStats(data.stats ?? {
             high_risk_companies: 128,
             pending_reports: 34,
-            high_priority_reports: 9
+            high_priority_reports: 9,
           });
-          
-          if (data.companies && data.companies.length > 0) {
-            // 按风险分数降序排序
-            const sortedCompanies = [...data.companies].sort((a, b) => b.score - a.score);
-            setCompanies(sortedCompanies);
-          } else {
-            setCompanies([]);
-          }
+
+          const sortedCompanies = Array.isArray(data.companies) 
+            ? [...data.companies].sort((a, b) => b.score - a.score) 
+            : [];
+          setCompanies(sortedCompanies);
         } else {
           setStats(null);
           setCompanies([]);
@@ -112,6 +101,7 @@ const Index = () => {
         </header>
 
         <section aria-labelledby="metrics" className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+          {/* High Risk Companies */}
           <Card className="hover:shadow-xl transition-all duration-300 border-0 [box-shadow:var(--shadow-elevated)]">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -121,7 +111,7 @@ const Index = () => {
             </CardHeader>
             <CardContent>
               <div className="text-4xl font-bold text-destructive mb-1">
-                {stats ? stats.high_risk_companies : 0}
+                {stats?.high_risk_companies ?? 0}
               </div>
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
                 <TrendingUp className="h-3 w-3" />
@@ -129,7 +119,8 @@ const Index = () => {
               </div>
             </CardContent>
           </Card>
-          
+
+          {/* Pending Reports */}
           <Card className="hover:shadow-xl transition-all duration-300 border-0 [box-shadow:var(--shadow-elevated)]">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -139,16 +130,18 @@ const Index = () => {
             </CardHeader>
             <CardContent>
               <div className="text-4xl font-bold text-primary mb-1">
-                {stats ? stats.pending_reports : 0}
+                {stats?.pending_reports ?? 0}
               </div>
               <div className="text-sm text-muted-foreground">
-                {t('dashboard.highPriority')} <span className="font-semibold text-accent">
-                  {stats ? stats.high_priority_reports : 0}
+                {t('dashboard.highPriority')}{" "}
+                <span className="font-semibold text-accent">
+                  {stats?.high_priority_reports ?? 0}
                 </span>
               </div>
             </CardContent>
           </Card>
-          
+
+          {/* Risk Trend */}
           <Card className="hover:shadow-xl transition-all duration-300 border-0 [box-shadow:var(--shadow-elevated)]">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">{t('dashboard.riskTrend')}</CardTitle>
@@ -159,18 +152,18 @@ const Index = () => {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" hide />
                   <YAxis hide />
-                  <Tooltip 
+                  <Tooltip
                     contentStyle={{
                       backgroundColor: 'hsl(var(--card))',
                       border: '1px solid hsl(var(--border))',
                       borderRadius: '8px'
                     }}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="risks" 
-                    stroke="hsl(var(--primary))" 
-                    strokeWidth={3} 
+                  <Line
+                    type="monotone"
+                    dataKey="risks"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={3}
                     dot={{ fill: 'hsl(var(--accent))', strokeWidth: 2, r: 4 }}
                   />
                 </LineChart>
@@ -179,6 +172,7 @@ const Index = () => {
           </Card>
         </section>
 
+        {/* Company Ranking Table */}
         <section aria-labelledby="ranking">
           <div className="flex items-center justify-between mb-6">
             <h2 id="ranking" className="text-2xl font-semibold">{t('dashboard.companyRanking')}</h2>
@@ -189,7 +183,7 @@ const Index = () => {
               </Link>
             </Button>
           </div>
-          
+
           <Card className="border-0 [box-shadow:var(--shadow-elevated)]">
             <CardContent className="p-0">
               <Table>
@@ -209,28 +203,30 @@ const Index = () => {
                         {t('dashboard.loading')}
                       </TableCell>
                     </TableRow>
-                  ) : companies && companies.length > 0 ? (
+                  ) : companies.length > 0 ? (
                     companies.map((c) => (
-                    <TableRow key={c.id} className="hover:bg-muted/50 transition-colors">
-                      <TableCell className="font-medium py-4">{c.name}</TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={riskColor(c.score) as any}
-                          className="px-3 py-1 text-sm font-semibold"
-                        >
-                          {c.score}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{t(`greenwashingTypes.${c.type}`)}</TableCell>
-                      <TableCell className="text-muted-foreground">{c.date}</TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="secondary" asChild className="hover:shadow-md">
-                          <Link to={`/company/${c.id}`} aria-label={t('dashboard.viewAnalysis', { company: c.name })}>
-                            {t('dashboard.viewDetails')}
-                          </Link>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
+                      <TableRow key={c.id} className="hover:bg-muted/50 transition-colors">
+                        <TableCell className="font-medium py-4">{c.name}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={riskColor(c.score) as any}
+                            className="px-3 py-1 text-sm font-semibold"
+                          >
+                            {c.score}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {t(`greenwashingTypes.${c.type}`) ?? c.type}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{c.date}</TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="secondary" asChild className="hover:shadow-md">
+                            <Link to={`/company/${c.id}`} aria-label={t('dashboard.viewAnalysis', { company: c.name })}>
+                              {t('dashboard.viewDetails')}
+                            </Link>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
                     ))
                   ) : (
                     <TableRow>
@@ -245,7 +241,7 @@ const Index = () => {
           </Card>
         </section>
       </main>
-      
+
       <FloatingChatbot />
     </div>
   );

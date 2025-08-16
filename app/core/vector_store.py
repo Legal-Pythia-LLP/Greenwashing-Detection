@@ -2,9 +2,7 @@ from langchain_openai import AzureOpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from app.config import AZURE_OPENAI_ENDPOINT_2, AZURE_OPENAI_API_KEY_2
 
-
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-
 
 # Updated embedding model initialization
 # embedding_model = AzureOpenAIEmbeddings(
@@ -17,12 +15,10 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 embedding_model = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-exp-03-07")
 
-
-
-# Text splitter 文本切分器
+# Text splitter
 text_splitter = RecursiveCharacterTextSplitter(
     chunk_size=1000,
     chunk_overlap=200,
     length_function=len,
     separators=["\n\n", "\n", ".", "!", "?", ",", " ", ""]
-) 
+)

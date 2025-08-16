@@ -1,19 +1,19 @@
-# 測試參數
+# Test parameters
 # input_name = "apple"
 # csv_path = "wikirate_companies_2000.csv"
 
-# # 讀取 CSV
+# # Read CSV
 # df = pd.read_csv(csv_path)
 
-# # 確保欄位存在
+# # Ensure required columns exist
 # if "name" not in df.columns or "isin_count" not in df.columns:
-#     raise ValueError("CSV 檔案中需要包含 'name' 和 'isin_count' 欄位")
+#     raise ValueError("CSV file must contain 'name' and 'isin_count' columns")
 
-# # 準備成 list of dict 結構
+# # Prepare as list of dicts
 # wikirate_companies = df[["name", "isin_count"]].to_dict(orient="records")
 
-# # 執行匹配函數
+# # Execute matching function
 # best_match = find_best_matching_company(input_name, wikirate_companies)
 
-# # 輸出結果
-# print(f"\n📌 對於輸入 '{input_name}'，最佳匹配公司名稱為：{best_match}")
+# # Output result
+# print(f"\n📌 For input '{input_name}', the best matching company name is: {best_match}")

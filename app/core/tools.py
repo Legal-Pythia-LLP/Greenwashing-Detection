@@ -9,7 +9,7 @@ import json
 import requests
 import cloudscraper
 from app.config import WIKIRATE_API_KEY
-from app.core.utils import search_and_filter_news  # 按你放的位置
+from app.core.utils import search_and_filter_news  # According to your placement
 
 # get_company_name
 from wikirate4py import API
@@ -21,32 +21,32 @@ import csv
 import re
 import multiprocessing
 
-# 名字模糊比對
-# 自訂 normalization 方法（模仿 NameMatcher transform=True）
+# Fuzzy name matching
+# Custom normalization method (imitating NameMatcher transform=True)
 def normalize_name(name: str) -> str:
     name = name.lower()
-    name = re.sub(r'[^a-z0-9\s]', '', name)  # 移除標點符號
-    name = re.sub(r'\s+', ' ', name)  # 移除多餘空白
+    name = re.sub(r'[^a-z0-9\s]', '', name)  # Remove punctuation
+    name = re.sub(r'\s+', ' ', name)  # Remove extra spaces
     return name.strip()
 
 def get_isin_count(company):
-    """從公司物件中讀取 ISIN 數量"""
+    """Read ISIN count from company object"""
     try:
         isin = getattr(company, "isin", None)
         isin_list = isin if isinstance(isin, list) else []
         return len(isin_list)
     except Exception as e:
-        print(f"無法處理公司 {company}: {e}")
+        print(f"Cannot process company {company}: {e}")
         return 0
 
 
 class WikirateClient:
-    """Wikirate API客户端，用于获取和验证ESG数据"""
+    """Wikirate API client for retrieving and validating ESG data"""
 
     def __init__(self, api_key: Optional[str] = None):
         self.base_url = "https://wikirate.org"
         self.api_key = api_key
-        self.session = cloudscraper.create_scraper(  # 替代 requests
+        self.session = cloudscraper.create_scraper(  # Replace requests
             browser={
                 'browser': 'chrome',
                 'platform': 'windows',
@@ -54,7 +54,7 @@ class WikirateClient:
             }
         )
 
-        # Cloudscraper 預設會附帶真實瀏覽器 UA
+        # Cloudscraper by default attaches a real browser UA
         self.session.headers.update({
             'Accept': 'application/json'
         })
@@ -65,14 +65,13 @@ class WikirateClient:
             })
 
     def search_company(self, company_name: str) -> Dict[str, Any]:
-        """搜尋公司資訊，支援精準名稱與模糊搜尋"""
+        """Search for company information, supports exact and fuzzy search"""
         try:
             original_name = company_name.strip()
             clean_name = original_name.strip()
-            print(f"[Wikirate] 嘗試精準搜尋：--{clean_name}--")
+            print(f"[Wikirate] Attempting exact search: --{clean_name}--")
             direct_url = f"{self.base_url}/{clean_name}.json"
 
-            # print(f"[Wikirate] 嘗試精準搜尋：{direct_url}")
             response = self.session.get(direct_url, timeout=10)
 
             print(f"[DEBUG] Status Code: {response.status_code}")
@@ -80,7 +79,7 @@ class WikirateClient:
 
             if response.status_code == 200:
                 data = response.json()
-                # 安全地处理所有字段，避免None.get()报错
+                # Safely handle all fields to avoid None.get() errors
                 def safe_get(d, key, default=None):
                     if d and isinstance(d, dict):
                         return d.get(key, default)
@@ -97,8 +96,7 @@ class WikirateClient:
                     "image_url": safe_get(data.get("image"), "content")
                 }
 
-            # 若精準搜尋失敗，改用 search API 做模糊搜尋
-            # print(f"[Wikirate] 精準搜尋失敗，改用模糊搜尋: '{original_name}'")
+            # If exact search fails, use search API for fuzzy search
             search_url = f"{self.base_url}/search.json"
             params = {
                 'q': original_name,
@@ -110,21 +108,15 @@ class WikirateClient:
                 results = response.json().get("items", [])
                 for item in results:
                     if item.get("type") == "Company":
-                        # print(f"[Wikirate] 模糊搜尋找到公司: {item.get('name')}")
                         return item
 
-            # print(f"[Wikirate] 公司 '{company_name}' 未在 Wikirate 找到")
             return {}
 
         except Exception as e:
-            # print(f"[Wikirate] 搜尋時發生錯誤: {e}")
             return {}
 
-    # 主函數：根據輸入名稱模糊比對，並根據 ISIN 數量選擇最佳匹配
+    # Main function: fuzzy match by input name and choose best match based on ISIN count
     def find_best_matching_company(self, input_name: str) -> str:
-        # self.parallel_fetch(num_workers=6)
-
-        # 加载公司数据
         csv_path = "wikirate_companies_all.csv"
         wikirate_companies = []
 
@@ -138,23 +130,23 @@ class WikirateClient:
                         'isin_count': int(row['isin_count'])
                     })
         except FileNotFoundError:
-            print(f"找不到公司数据文件: {csv_path}")
+            print(f"Company data file not found: {csv_path}")
             return None
 
         keyword = input_name.lower()
         filtered_companies = [c for c in wikirate_companies if keyword in c['name'].lower()]
         if not filtered_companies:
-            print("找不到任何名稱包含關鍵字的公司")
+            print("No companies found containing the keyword")
             return None
 
-        # 印出所有符合條件的公司名稱
-        print("🔍 找到以下包含關鍵字的公司：")
+        # Print all matching company names
+        print("🔍 Found the following companies containing the keyword:")
         for c in filtered_companies:
             print(f" - {c['name']}")
 
         company_names = [c['name'] for c in filtered_companies]
 
-        # 建立轉換對照表
+        # Build normalized mapping
         normalized_map = {}
         for c in wikirate_companies:
             original_name = c['name'] if isinstance(c, dict) else c
@@ -181,8 +173,8 @@ class WikirateClient:
         if matches.empty:
             return None
 
-        # 印出所有匹配的名稱與分數
-        print("所有匹配結果：")
+        # Print all matched names and scores
+        print("All match results:")
         results = []
         for i in range(5):
             match_name_col = f'match_name_{i}'
@@ -193,42 +185,38 @@ class WikirateClient:
                 if pd.notna(match_name):
                     normalized = normalize_name(match_name)
                     isin_count = normalized_map.get(normalized, {}).get('isin_count', 0)
-                    print(f"{i + 1}. {match_name}  分數: {score:.2f}  ISIN數量: {isin_count}")
+                    print(f"{i + 1}. {match_name}  Score: {score:.2f}  ISIN count: {isin_count}")
                     results.append((normalized, score))
 
         if not results:
             return None
 
-        # 找出最高分
+        # Find highest score
         max_score = max(score for _, score in results)
         top_matches = [name for name, score in results if score == max_score]
 
-        # 如果只有一個最高分 → 回傳原始名稱
+        # If only one top score → return original name
         if len(top_matches) == 1:
             return normalized_map.get(top_matches[0], {}).get('original_name', top_matches[0])
 
-        # 如果有多個最高分 → 用 isin_count 挑選
+        # If multiple top scores → select by ISIN count
         best_match = max(top_matches, key=lambda name: normalized_map.get(name, {}).get('isin_count', 0))
         return normalized_map.get(best_match, {}).get('original_name', best_match)
 
     def get_company_metrics(self, company_name: str) -> Dict[str, Any]:
-        """获取公司的ESG指标数据，使用wikirate4py API"""
+        """Get company's ESG metrics data using wikirate4py API"""
         try:
             from wikirate4py import API
 
-            # 初始化wikirate4py API
             api = API(self.api_key)
-
-            # 获取公司信息
             company = api.get_company(company_name)
             if not company:
                 return {"error": f"Company '{company_name}' not found"}
 
-            # 分页获取所有答案
             all_answers = []
             limit = 10
             offset = 0
-            max_total = 20  # 最多获取200条记录
+            max_total = 20  # Get up to 20 records
 
             while len(all_answers) < max_total:
                 batch = api.get_answers(company=company.name, limit=min(limit, max_total - len(all_answers)), offset=offset)
@@ -239,12 +227,10 @@ class WikirateClient:
                     break
                 offset += limit
 
-            # 筛选ESG相关指标
             esg_topics = ["environment", "social", "governance"]
             esg_metrics = set()
             metric_cache = {}
 
-            # 获取所有指标的ESG主题和单位信息
             for answer in all_answers:
                 metric_name = answer.metric
                 if metric_name in metric_cache:
@@ -260,16 +246,13 @@ class WikirateClient:
                                 topics.append(t.lower())
                             elif isinstance(t, dict) and 'name' in t:
                                 topics.append(t['name'].lower())
-
-                        # 获取单位信息
                         unit = getattr(metric_obj, 'unit', None)
-
                         metric_cache[metric_name] = {
                             'topics': topics,
                             'unit': unit
                         }
                     except Exception as e:
-                        print(f"获取指标 {metric_name} 信息失败: {e}")
+                        print(f"Failed to get metric {metric_name} info: {e}")
                         topics = []
                         unit = None
                         metric_cache[metric_name] = {
@@ -280,7 +263,6 @@ class WikirateClient:
                 if any(topic in topics for topic in esg_topics):
                     esg_metrics.add(metric_name)
 
-            # 构建返回结果
             results = {
                 "company_name": company_name,
                 "total_answers": len(all_answers),
@@ -288,7 +270,6 @@ class WikirateClient:
                 "esg_data": []
             }
 
-            # 提取ESG相关指标的数据
             for answer in all_answers:
                 if answer.metric in esg_metrics:
                     record = {
@@ -296,9 +277,6 @@ class WikirateClient:
                         "year": getattr(answer, 'year', None),
                         "value": getattr(answer, 'value', None),
                         "unit": metric_cache.get(answer.metric, {}).get('unit'),
-                        # "comments": getattr(answer, 'comments', None),
-                        # "source": getattr(answer, 'source', None),
-                        # "topics": metric_cache.get(answer.metric, {}).get('topics', [])
                     }
                     results["esg_data"].append(record)
 
@@ -309,7 +287,7 @@ class WikirateClient:
             return {"error": str(e)}
 
     def get_metric_details(self, metric_name: str) -> Dict[str, Any]:
-        """获取指标的详细信息和定义"""
+        """Get detailed information and definition of a metric"""
         try:
             url = f"{self.base_url}/{metric_name}.json"
             response = self.session.get(url, timeout=10)
@@ -324,7 +302,7 @@ class WikirateClient:
             return {}
 
 
-# Wikirate验证工具
+# Wikirate Validation Tool
 class WikirateValidationTool(BaseTool):
     name: str = "wikirate_validation"
     description: str = "Validates ESG metrics and claims against Wikirate database"
@@ -337,28 +315,16 @@ class WikirateValidationTool(BaseTool):
         self.wikirate_client = WikirateClient(WIKIRATE_API_KEY)
 
     def _run(self, extracted_metrics: str) -> str:
-        """验证提取的ESG指标与Wikirate数据库的一致性"""
+        """Validate extracted ESG metrics against Wikirate database"""
         try:
-            # validation_results = {
-            #     "company_found": False,
-            #     "metrics_verified": {},
-            #     "discrepancies": [],
-            #     "verification_score": 0.0
-            # }
-
-            # 根據輸入名稱模糊比對，並根據 ISIN 數量選擇最佳匹配
+            # Perform fuzzy match by input name and select the best match based on ISIN count
             self.company_name = self.wikirate_client.find_best_matching_company(self.company_name)
 
             if self.company_name:
-                # validation_results["company_found"] = True
-
-                # 获取公司的ESG指标
+                # Get company's ESG metrics
                 metrics_data = self.wikirate_client.get_company_metrics(self.company_name)
 
                 if "error" not in metrics_data:
-                    # validation_results["metrics_verified"] = metrics_data
-
-
                     analysis_prompt = f"""
                     You are an expert ESG validation analyst. 
 
@@ -386,29 +352,6 @@ class WikirateValidationTool(BaseTool):
                     response = llm.invoke([HumanMessage(content=analysis_prompt)])
 
                     return response.content
-
-
-                    # # 提取验证分数
-                    # verification_text = response.content
-                    #
-                    # # 简单的分数提取逻辑（可以改进）
-                    # if "verification score" in verification_text.lower():
-                    #     import re
-                    #     score_match = re.search(r'(\d+)(?:/100|\%)', verification_text)
-                    #     if score_match:
-                    #         validation_results["verification_score"] = float(score_match.group(1))
-                    #
-                    # return f"""
-                    # Wikirate Validation Results:
-                    #
-                    # Company Found: {validation_results['company_found']}
-                    # Verification Score: {validation_results['verification_score']}
-                    #
-                    # Detailed Analysis:
-                    # {verification_text}
-                    #
-                    # Raw Wikirate Data Available: {len(metrics_data)} metrics found
-                    # """
 
                 else:
                     return f"Company found in Wikirate but no ESG metrics available: {metrics_data['error']}"
@@ -456,23 +399,17 @@ class ESGDocumentAnalysisTool(BaseTool):
             """
 
             response = llm.invoke([HumanMessage(content=analysis_prompt)])
-            # return response.content
             raw_llm_content = response.content
 
-            # 使用正则表达式移除潜在的Markdown代码块包装
-            # 匹配开头```json\n 和 结尾的 ```（可能是\n```）
+            # Remove potential Markdown code block wrappers
             cleaned_llm_content = re.sub(r'```json\n(.*)```', r'\1', raw_llm_content, flags=re.DOTALL)
-            # 进一步清理可能只剩下 ```json 和 ``` 的情况
             cleaned_llm_content = cleaned_llm_content.replace('```json', '').replace('```', '').strip()
             try:
-                # 尝试解析LLM返回的JSON字符串为Python列表对象
                 parsed_json_response = json.loads(cleaned_llm_content)
 
-                # 确保解析后的结果确实是一个列表
                 if isinstance(parsed_json_response, list):
-                    return parsed_json_response  # <-- 直接返回解析后的列表
+                    return parsed_json_response
                 else:
-                    # 如果LLM没有返回列表，而是其他JSON类型（比如单个对象），可以抛出错误或根据需要处理
                     return [
                         {
                             "quotation": "",
@@ -481,10 +418,9 @@ class ESGDocumentAnalysisTool(BaseTool):
                             "verification_method": "",
                             "data_needed": ""
                         }
-                    ]  # 返回一个包含错误信息的列表
+                    ]
 
             except json.JSONDecodeError as json_e:
-                # 如果LLM没有返回有效的JSON，捕获错误
                 return [
                     {
                         "quotation": "",
@@ -493,10 +429,9 @@ class ESGDocumentAnalysisTool(BaseTool):
                         "verification_method": "",
                         "data_needed": ""
                     }
-                ]  # 返回一个包含错误信息的列表
+                ]
 
         except Exception as e:
-            # 捕获其他任何异常
             return [
                 {
                     "quotation": "",
@@ -505,7 +440,7 @@ class ESGDocumentAnalysisTool(BaseTool):
                     "verification_method": "",
                     "data_needed": ""
                 }
-            ]  # 返回一个包含错误信息的列表
+            ]
 
 
 
@@ -520,14 +455,14 @@ class NewsValidationTool(BaseTool):
 
     def _run(self, claims: str) -> str:
         try:
-            # 👇 修改：让搜索函数返回内容 + 标题
+            # 👇 Modification: make the search function return content + titles
             news_content, used_titles = search_and_filter_news(self.company_name, max_articles=10)
 
             if not news_content:
                 return "No relevant news articles found for this company"
 
-            # 打印使用到的新闻标题
-            print("[ 使用的新闻文章]")
+            # Print the news titles used
+            print("[ Used News Articles]")
             for idx, title in enumerate(used_titles, start=1):
                 print(f"{idx}. {title}")
 
@@ -549,7 +484,7 @@ class NewsValidationTool(BaseTool):
             - If the provided news_text is unrelated to the quote and cannot be evaluated in any way, please mark it as “Not Mentioned.”
 
             ---
-            
+
             Claims:
             {claims}
 
@@ -561,7 +496,6 @@ class NewsValidationTool(BaseTool):
             2. **Reasoning**: Explain why you chose this status  
             3. **news_quotation**: Include any relevant quotation from news_text if applicable  
             """
-
 
             response = llm.invoke([HumanMessage(content=validation_prompt)])
             return response.content
@@ -604,10 +538,10 @@ class ESGMetricsCalculatorTool(BaseTool):
             response = llm.invoke([HumanMessage(content=metrics_prompt)])
             raw = (response.content or "").strip()
 
-            # 去掉 ```json/``` 围栏
+            # Remove ```json/``` fence
             clean = raw.replace("```json", "").replace("```", "").strip()
 
-            # 解析 JSON；失败则给一个零分骨架，保证前端不崩
+            # Parse JSON; if it fails, return a zero-score skeleton to avoid frontend crash
             import json
             try:
                 data = json.loads(clean)

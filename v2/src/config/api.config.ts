@@ -1,9 +1,9 @@
-// API 配置
+// API Configuration
 export const API_CONFIG = {
-  // 开发环境使用本地后端
+  // Use local backend in development environment
   BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/v1',
   
-  // API 端点
+  // API endpoints
   ENDPOINTS: {
     UPLOAD: '/upload',
     CHAT: '/chat',
@@ -12,17 +12,17 @@ export const API_CONFIG = {
     DASHBOARD: '/dashboard',
   },
   
-  // 超时设置
+  // Timeout settings
   TIMEOUT: 30000,
   
-  // 重试次数
+  // Retry attempts
   RETRY_COUNT: 3,
 };
 
-// 检查是否为开发环境
+// Check if it's development environment
 export const IS_DEV = import.meta.env.DEV;
 
-// 获取完整的 API URL
+// Get full API URL
 export const getApiUrl = (endpoint: string) => {
   return `${API_CONFIG.BASE_URL}${endpoint}`;
 };

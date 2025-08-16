@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState } from "react"; 
 import {
   AlertDialog,
   AlertDialogAction,
@@ -55,7 +55,7 @@ const handleStart = async () => {
 
   const formData = new FormData();
   formData.append("file", files[0]);
-  // 如果需要可选语言，可以加上这一行：
+  // If optional language is needed, add this line:
   // formData.append("overrided_language", "zh");
 
   try {
@@ -63,7 +63,7 @@ const handleStart = async () => {
     setUploadProgress(10);
     setUploadStage(t("upload.uploadingFile"));
 
-    // 模拟进度更新
+    // Simulate progress updates
     const progressInterval = setInterval(() => {
       setUploadProgress((prev) => {
         if (prev < 90) return prev + 10;
@@ -71,10 +71,10 @@ const handleStart = async () => {
       });
     }, 2000);
 
-    // 调用 API 服务，使用FormData上传
+    // Call API service to upload using FormData
     const data = await APIService.uploadFile(formData);
     
-    // 处理重复文件情况
+    // Handle duplicate file case
     if (data?.status === "duplicate") {
       clearInterval(progressInterval);
       setUploadProgress(0);
@@ -90,7 +90,7 @@ const handleStart = async () => {
     setUploadStage(t("upload.analysisComplete"));
 
     if (!sessionId) {
-      toast.error("后端未返回 session_id，无法查看分析结果");
+      toast.error("Backend did not return session_id, cannot view analysis results");
       return;
     }
 
@@ -103,16 +103,14 @@ const handleStart = async () => {
   } catch (e: any) {
     console.error("Upload error:", e);
 
-    // 提供更友好的错误信息
+    // Provide more user-friendly error messages
     let errorMessage = t("upload.uploadFailedRetry");
 
     if (e?.message) {
-      if (e.message.includes("timeout") || e.message.includes("超时")) {
+      if (e.message.includes("timeout")) {
         errorMessage = t("upload.errors.timeout");
       } else if (e.message.includes("ECONNABORTED")) {
         errorMessage = t("upload.errors.connectionFailed");
-      } else if (e.message.includes("API 接口不存在")) {
-        errorMessage = t("upload.errors.apiConfigError");
       } else {
         errorMessage = e.message;
       }
@@ -187,7 +185,7 @@ const handleStart = async () => {
                 <Input id="note" placeholder={t('upload.notePlaceholder')} />
               </div>
 
-              {/* 上传进度显示 */}
+              {/* Upload progress display */}
               {uploading && (
                 <div className="space-y-3">
                   <div className="flex justify-between text-sm">
@@ -217,7 +215,7 @@ const handleStart = async () => {
       </main>
       <FloatingChatbot />
 
-      {/* 重复文件对话框 */}
+      {/* Duplicate file dialog */}
       <AlertDialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -241,7 +239,7 @@ const handleStart = async () => {
                 setUploadStage(t("upload.reanalyzing"));
                 setShowDuplicateDialog(false);
                 
-                // 强制重新分析，添加随机session_id和force_new标志
+                // Force re-analysis with random session_id and force_new flag
                 const formData = new FormData();
                 formData.append("file", files[0]);
                 formData.append("session_id", `s_${Date.now()}`);

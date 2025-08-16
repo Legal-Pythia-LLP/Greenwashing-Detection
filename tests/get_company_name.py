@@ -9,33 +9,33 @@ import multiprocessing
 
 api = API("JoDaOQXoU2vzgRAbaArQlwtt")
 
-# 多線程抓 company id, company name, ISIN 數量
+# Multi-threaded fetching of company id, company name, and ISIN count
 PAGE_SIZE = 100
-MAX_PAGES = 100000  # 預估最多抓幾頁，無資料時會自動停止
-OUTPUT_FILE = "wikirate_companies_all.csv"  # ✅ 你要的檔名
+MAX_PAGES = 100000  # Estimated maximum pages, will stop automatically if no data
+OUTPUT_FILE = "wikirate_companies_all.csv"  # Desired output file
 csv_path = "wikirate_companies_all.csv"
 
 def get_isin_count(company):
-    """從公司物件中讀取 ISIN 數量"""
+    """Read the number of ISINs from a company object"""
     try:
         isin = getattr(company, "isin", None)
         isin_list = isin if isinstance(isin, list) else []
         return len(isin_list)
     except Exception as e:
-        print(f"⚠️ 無法處理公司 {company}: {e}")
+        print(f"⚠️ Cannot process company {company}: {e}")
         return 0
 
 def worker(task_queue, result_queue, worker_id):
-    """每個進程抓取指定 offset 頁的資料"""
+    """Each process fetches data for the given offset page"""
     while True:
         try:
             offset = task_queue.get(timeout=2)
         except:
-            break  # 沒有新工作就退出
+            break  # Exit if no new task
 
         companies = api.get_companies(limit=PAGE_SIZE, offset=offset)
         if not companies:
-            print(f"🚫 Worker {worker_id} - offset {offset} 沒有資料，停止")
+            print(f"🚫 Worker {worker_id} - offset {offset} has no data, stopping")
             break
 
         results = []
@@ -46,72 +46,71 @@ def worker(task_queue, result_queue, worker_id):
         for row in results:
             result_queue.put(row)
 
-        print(f"✅ Worker {worker_id} - 抓取 offset {offset} 共 {len(companies)} 筆")
-        time.sleep(0.2)  # 控制速度避免 API 限制
+        print(f"✅ Worker {worker_id} - fetched offset {offset}, total {len(companies)} records")
+        time.sleep(0.2)  # Control speed to avoid API limits
 
 def parallel_fetch(num_workers=6):
     manager = multiprocessing.Manager()
     task_queue = manager.Queue()
     result_queue = manager.Queue()
 
-    # 動態產生 offset 任務
+    # Dynamically generate offset tasks
     for i in range(MAX_PAGES):
         task_queue.put(i * PAGE_SIZE)
 
-    # 建立多個進程
+    # Create multiple processes
     processes = []
     for i in range(num_workers):
         p = multiprocessing.Process(target=worker, args=(task_queue, result_queue, i))
         p.start()
         processes.append(p)
 
-    # 等待全部完成
+    # Wait for all to finish
     for p in processes:
         p.join()
 
-    print("📝 所有 worker 完成，準備寫入檔案...")
+    print("📝 All workers completed, preparing to write file...")
 
-    # 寫入 CSV 結果
+    # Write CSV results
     with open(OUTPUT_FILE, "w", newline="", encoding="utf-8") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(["id", "name", "isin_count"])
         while not result_queue.empty():
             writer.writerow(result_queue.get())
 
-    print(f"📁 已寫入 {OUTPUT_FILE}")
+    print(f"📁 Written to {OUTPUT_FILE}")
 
-# ✅ 執行主程式
+# ✅ Execute main program
 if __name__ == "__main__":
     parallel_fetch(num_workers=6)
 
 # ============================================================================================================
 
-# 名字模糊比對
-# ✅ 自訂 normalization 方法（模仿 NameMatcher transform=True）
+# Fuzzy name matching
+# ✅ Custom normalization function (mimicking NameMatcher transform=True)
 def normalize_name(name: str) -> str:
     name = name.lower()
-    name = re.sub(r'[^a-z0-9\s]', '', name)   # 移除標點符號
-    name = re.sub(r'\s+', ' ', name)          # 移除多餘空白
+    name = re.sub(r'[^a-z0-9\s]', '', name)   # Remove punctuation
+    name = re.sub(r'\s+', ' ', name)          # Remove extra whitespace
     return name.strip()
 
-
-# ✅ 主函數：根據輸入名稱模糊比對，並根據 ISIN 數量選擇最佳匹配
+# ✅ Main function: perform fuzzy match on input name and select best match by ISIN count
 def find_best_matching_company(input_name: str, wikirate_companies: list) -> str:
     
     keyword = input_name.lower()
     filtered_companies = [c for c in wikirate_companies if keyword in c['name'].lower()]
     if not filtered_companies:
-        print("❌ 找不到任何名稱包含關鍵字的公司")
+        print("❌ No company found containing the keyword")
         return None
 
-    # ✅ 印出所有符合條件的公司名稱
-    print("🔍 找到以下包含關鍵字的公司：")
+    # ✅ Print all matching companies
+    print("🔍 Found the following companies containing the keyword:")
     for c in filtered_companies:
         print(f" - {c['name']}")
 
     company_names = [c['name'] for c in filtered_companies]
 
-    # 建立轉換對照表
+    # Create normalization mapping
     normalized_map = {}
     for c in wikirate_companies:
         original_name = c['name'] if isinstance(c, dict) else c
@@ -138,8 +137,8 @@ def find_best_matching_company(input_name: str, wikirate_companies: list) -> str
     if matches.empty:
         return None
 
-    # 🧪 印出所有匹配的名稱與分數
-    print("🧪 所有匹配結果：")
+    # 🧪 Print all matching names and scores
+    print("🧪 All matching results:")
     results = []
     for i in range(5):
         match_name_col = f'match_name_{i}'
@@ -150,24 +149,20 @@ def find_best_matching_company(input_name: str, wikirate_companies: list) -> str
             if pd.notna(match_name):
                 normalized = normalize_name(match_name)
                 isin_count = normalized_map.get(normalized, {}).get('isin_count', 0)
-                print(f"{i+1}. {match_name}  👉 分數: {score:.2f}  🆔 ISIN數量: {isin_count}")
+                print(f"{i+1}. {match_name}  👉 Score: {score:.2f}  🆔 ISIN count: {isin_count}")
                 results.append((normalized, score))
 
     if not results:
         return None
 
-    # 找出最高分
+    # Find highest score
     max_score = max(score for _, score in results)
     top_matches = [name for name, score in results if score == max_score]
 
-    # 如果只有一個最高分 → 回傳原始名稱
+    # If only one top match → return original name
     if len(top_matches) == 1:
         return normalized_map.get(top_matches[0], {}).get('original_name', top_matches[0])
 
-    # 如果有多個最高分 → 用 isin_count 挑選
+    # If multiple top matches → select by ISIN count
     best_match = max(top_matches, key=lambda name: normalized_map.get(name, {}).get('isin_count', 0))
     return normalized_map.get(best_match, {}).get('original_name', best_match)
-
-
-
-
