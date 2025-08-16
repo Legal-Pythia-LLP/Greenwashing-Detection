@@ -138,4 +138,37 @@ All colors MUST be HSL.
   .gradient-text {
     @apply bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent;
   }
+
+  /* Radar chart label styling */
+  .recharts-polar-angle-axis-tick text {
+    font-size: 10px !important;
+    font-weight: 500;
+    fill: hsl(var(--muted-foreground)) !important;
+  }
+
+  .recharts-polar-angle-axis-tick line {
+    stroke: hsl(var(--border)) !important;
+    stroke-width: 1;
+  }
+
+  /* Radar chart radius axis styling */
+  .recharts-polar-radius-axis-tick text {
+    font-size: 9px !important;
+    font-weight: 400;
+    fill: hsl(var(--muted-foreground)) !important;
+  }
+
+  .recharts-polar-radius-axis-tick line {
+    stroke: hsl(var(--border)) !important;
+    stroke-width: 0.5;
+  }
+
+  /* Radar chart container styling */
+  .radar-chart-container {
+    overflow: visible !important;
+  }
+
+  .radar-chart-container .recharts-wrapper {
+    overflow: visible !important;
+  }
 }

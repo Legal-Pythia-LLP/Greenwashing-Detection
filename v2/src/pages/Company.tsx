@@ -594,14 +594,41 @@ return (
           <CardHeader>
             <CardTitle>1.Risk Type Breakdown</CardTitle>
           </CardHeader>
-          <CardContent className="h-64">
+          <CardContent className="h-80 relative">
             {safeBreakdown.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart data={safeBreakdown} outerRadius={80}>
+              <ResponsiveContainer width="100%" height="100%" style={{ padding: '20px' }} className="radar-chart-container">
+                <RadarChart data={safeBreakdown} outerRadius={70}>
                   <PolarGrid />
-                  <PolarAngleAxis dataKey="type" />
-                  <PolarRadiusAxis angle={30} domain={[0, 100]} />
-                  <Tooltip />
+                  <PolarAngleAxis 
+                    dataKey="type" 
+                    tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                    tickFormatter={(value) => {
+                      // Shorten long labels to prevent cropping
+                      if (value === 'Vague or unsubstantiated claims') return 'Vague Claims';
+                      if (value === 'Lack of specific metrics or targets') return 'Lack of Metrics';
+                      if (value === 'Misleading terminology') return 'Misleading Terms';
+                      if (value === 'Cherry-picked data') return 'Cherry-picked Data';
+                      if (value === 'Absence of third-party verification') return 'No Verification';
+                      return value;
+                    }}
+                  />
+                  <PolarRadiusAxis 
+                    angle={30} 
+                    domain={[0, 100]} 
+                    tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }}
+                  />
+                  <Tooltip 
+                    formatter={(value, name) => [value, 'Risk Score']}
+                    labelFormatter={(label) => {
+                      // Show full label in tooltip
+                      if (label === 'Vague Claims') return 'Vague or unsubstantiated claims';
+                      if (label === 'Lack of Metrics') return 'Lack of specific metrics or targets';
+                      if (label === 'Misleading Terms') return 'Misleading terminology';
+                      if (label === 'Cherry-picked Data') return 'Cherry-picked data';
+                      if (label === 'No Verification') return 'Absence of third-party verification';
+                      return label;
+                    }}
+                  />
                   <Radar
                     name="风险"
                     dataKey="value"
