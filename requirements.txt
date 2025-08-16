@@ -22,3 +22,7 @@ PyPDF2
 unstructured
 selenium
 langchain-google-genai
+rapidocr
+onnxruntime
+wordninja
+pyspellchecker

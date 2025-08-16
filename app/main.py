@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import upload_router, chat_router, wikirate_router, report_router, dashboard_router
+from app.api.ocr_routes import router as ocr_router
 
 app = FastAPI(title="ESG Greenwashing Analysis API", root_path="/v1")
 
@@ -25,7 +26,7 @@ app.include_router(chat_router)
 app.include_router(wikirate_router)
 app.include_router(report_router)
 app.include_router(dashboard_router)
-
+app.include_router(ocr_router)
 
 if __name__ == "__main__":
     import uvicorn
