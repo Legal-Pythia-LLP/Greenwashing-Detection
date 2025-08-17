@@ -19,10 +19,10 @@ embedding_model = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-ex
 
 
 
-# Text splitter 文本切分器
+# Text splitter
 text_splitter = RecursiveCharacterTextSplitter(
     chunk_size=1000,
     chunk_overlap=200,
     length_function=len,
     separators=["\n\n", "\n", ".", "!", "?", ",", " ", ""]
-) 
+)

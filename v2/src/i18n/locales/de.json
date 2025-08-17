@@ -81,7 +81,17 @@
     "uploadFailed": "Upload fehlgeschlagen ({{status}})",
     "analysisCreated": "Analyse erstellt, Bericht wird generiert...",
     "backendNotConnected": "Backend nicht verbunden, lokaler Vorschaubericht erstellt",
-    "uploadFailedRetry": "Upload fehlgeschlagen, bitte später versuchen"
+    "uploadFailedRetry": "Upload fehlgeschlagen, bitte später versuchen",
+    "duplicateDialog": {
+      "title": "Doppelte Analyse erkannt",
+      "description": "Diese Datei wurde bereits analysiert. Möchten Sie sie neu analysieren oder die vorhandenen Ergebnisse anzeigen?",
+      "showOld": "Vorhandene Ergebnisse anzeigen",
+      "reanalyze": "Ja, neu analysieren"
+    },
+    "reanalyzing": "Neuanalyse läuft...",
+    "errors": {
+      "reanalyzeFailed": "Neuanalyse fehlgeschlagen"
+    }
   },
   "company": {
     "title": "Unternehmens-Analysebericht",

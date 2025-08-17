@@ -7,18 +7,18 @@ from spellchecker import SpellChecker
 
 class OCRService:
     """
-    RapidOCR v3 (ONNXRuntime) + 通用清洗：
-    - 识别语言：LATIN（含英/德/意等）
-    - 清洗模式：
-        mode="smart"  使用 wordninja 分词 + 英文拼写温和纠错（仅 ASCII 英文词）
-        mode="basic"  仅做空白/标点规范化（跨语言最安全）
+    RapidOCR v3 (ONNXRuntime) + General Cleaning:
+    - Recognition language: LATIN (including EN/DE/IT etc.)
+    - Cleaning modes:
+        mode="smart"  Use wordninja tokenization + mild English spell correction (ASCII English words only) Can be more aggressive, but may "over-correct".
+        mode="basic"  Normalize whitespace/punctuation only (safest across languages)  Now set to default. Safer for short slogans / packaging text.
     """
     SAFE_TOKENS = {"H2COCO", "H2COCONUT.COM"}
     SAFE_PATTERNS = [
         re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"),  # email
         re.compile(r"^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$"),                    # domain
         re.compile(r"^@[\w.-]+$"),                                        # handle
-        re.compile(r"^(?=.*[0-9-])[A-Z0-9-]{2,}$"),                       # 型号/码(需含数字/短横)
+        re.compile(r"^(?=.*[0-9-])[A-Z0-9-]{2,}$"),                       # Model/code (must contain numbers/hyphen)
     ]
 
     def __init__(self, det_lang: str = "MULTI", rec_lang: str = "LATIN") -> None:
@@ -32,10 +32,11 @@ class OCRService:
             "Rec.model_type":  ModelType.MOBILE,
             "Rec.ocr_version": OCRVersion.PPOCRV5,
         })
-        # 仅用于英文拼写纠错；对德/意等非 ASCII 词一律不改
+        # Only used for English spell correction; DE/IT and other non-ASCII words are left unchanged
+
         self.spell_en = SpellChecker(language="en")
 
-    # ----------------- 对外调用 -----------------
+    #  External Call 
     def read(self, image_path: str, mode: str = "smart") -> Dict[str, Any]:
         r = self.engine(image_path)
         lines: List[str] = list(r.txts or [])
@@ -52,18 +53,25 @@ class OCRService:
         out["clean_mode"] = mode
         return out
 
-    # ----------------- 清洗实现 -----------------
+    # Cleaning Implementation
     @staticmethod
     def _basic_normalize(text: str) -> str:
-        # 使用 Unicode 字母类，避免破坏 ä/ö/ü/ß/à/è 等
+        # Use Unicode letter classes to avoid breaking ä/ö/ü/ß/à/è etc.
+        """
+        Basic whitespace/punctuation normalization.
+        NOTE: Do NOT split alphanumeric tokens anymore
+        (we removed A1->A 1, CO2->CO 2 rules) to avoid
+        breaking chemical formulas or brand names like H2.
+        """
         t = text.strip()
         t = re.sub(r"\s+", " ", t)
         t = t.replace("’", "'").replace("—", "-")
-        t = re.sub(r"([^\W\d_])(\d)", r"\1 \2", t)  # A1 -> A 1
-        t = re.sub(r"(\d)([^\W\d_])", r"\1 \2", t)  # 1A -> 1 A
+       # Removed: splitting letter+digit → caused "H2" → "H 2"
+       # t = re.sub(r"([^\W\d_])(\d)", r"\1 \2", t)  # A1 -> A 1
+       # t = re.sub(r"(\d)([^\W\d_])", r"\1 \2", t)  # 1A -> 1 A
         t = re.sub(r"\s+([,.:;!?])", r"\1", t)
         t = re.sub(r"\s*&\s*", " & ", t)
-        # 域名后紧跟字母断开：.comAB -> .com AB
+        # Break after domain if followed by letters: .comAB -> .com AB
         t = re.sub(r"(\.[A-Za-z]{2,})(?=[A-Za-z])", r"\1 ", t)
         return t
 
@@ -73,7 +81,7 @@ class OCRService:
         return any(p.match(tok) for p in self.SAFE_PATTERNS)
 
     def _split_allcaps_token(self, tok: str) -> str:
-        # 仅对「ASCII 全大写长词」用统计分词；带变音的德/意词直接跳过
+        # Apply statistical tokenization only for "ASCII ALL-CAPS long words"; skip DE/IT words with umlauts
         if self._is_safe_token(tok):
             return tok
         core = tok.replace("'", "").replace("-", "")
@@ -84,7 +92,7 @@ class OCRService:
         return tok
 
     def _split_token_general(self, tok: str) -> str:
-        # CamelCase 拆分 + 对「ASCII 长连写小写」用 wordninja（避免误拆德/意变音词）
+        # Split CamelCase + use wordninja for "ASCII long lowercase runs" (avoid splitting DE/IT umlaut words)
         if self._is_safe_token(tok):
             return tok
         camel = re.sub(r"(?<=[a-z])(?=[A-Z])", " ", tok)
@@ -122,12 +130,12 @@ class OCRService:
         return dst
 
     def _spell_fix_tokens_en(self, tokens: List[str]) -> List[str]:
-        # 仅对「ASCII 英文字母」做英文拼写纠错；其余（德/意等）不动
+        # Apply English spell correction only to "ASCII letters"; leave DE/IT words unchanged
         fixed: List[str] = []
         for tok in tokens:
             if not tok.isascii() or not tok.isalpha() or len(tok) < 3 or self._is_safe_token(tok):
                 fixed.append(tok); continue
-            # 尝试 …e/…o → …ed（如 RECYCLEO → RECYCLED）
+            # Try …e/…o → …ed (e.g. RECYCLEO → RECYCLED)
             if tok[-1] in {"e","E","o","O"}:
                 cand = tok[:-1] + "ed"
                 if self.spell_en.known([cand.lower()]):
@@ -139,11 +147,11 @@ class OCRService:
         return fixed
 
     def _join_contractions(self, text: str) -> str:
-        # YOU ' RE → YOU'RE；通用 s/re/ve/ll/d/t
+        # Normalize YOU ' RE → YOU'RE; also general s/re/ve/ll/d/t cases
         return re.sub(r"\b([A-Za-z]+)\s+'\s*(s|re|ve|ll|d|t)\b", r"\1'\2", text, flags=re.IGNORECASE)
 
-    def _clean_lines(self, lines: List[str], mode: str = "smart") -> List[str]:
-        # 1) 行级清洗
+    def _clean_lines(self, lines: List[str], mode: str = "basic") -> List[str]:
+        # 1) Line-level cleaning
         if mode == "basic":
             cleaned = [self._basic_normalize(x) for x in lines if x and x.strip()]
             return cleaned
@@ -153,11 +161,11 @@ class OCRService:
         para = self._basic_normalize(" ".join(lines))
         para = self._join_contractions(para)
 
-        # 2) 词级纠错（仅 ASCII 英文），不影响德/意变音词
+        # 2) Word-level correction (ASCII English only), no effect on DE/IT umlaut words
         tokens = re.findall(r"[^\W\d_]+|\d+|[^\w\s]", para, flags=re.UNICODE)
         tokens = self._spell_fix_tokens_en(tokens)
 
-        # 3) 重组句子：标点前不加空格
+        # 3) Rebuild sentence: no space before punctuation
         out: List[str] = []
         for i, t in enumerate(tokens):
             if i > 0 and not re.match(r"[,.!?;:)]$", t) and not re.match(r"^[(']", t):
@@ -165,7 +173,7 @@ class OCRService:
             out.append(t)
         para = self._basic_normalize("".join(out))
 
-        # 4) 温和的通用修复
+        # 4) Mild general fixes
         fixes = [
             (r"\bCAN\s*S\s+CAN\b", "CANS CAN"),
             (r"\bRECYCLE\s*D?\b", "RECYCLED"),
@@ -176,17 +184,18 @@ class OCRService:
         for pat, rep in fixes:
             para = re.sub(pat, rep, para, flags=re.IGNORECASE)
 
-        # 5) 形态学：<verb> e/o + 介词 → <verb>ed + 介词（仅英文词典承认时）
+        # 5) Morphology: <verb> e/o + preposition → <verb>ed + preposition (only if accepted by English dict)
         def verb_ed_fix(m):
             base, prep = m.group(1), m.group(2)
             cand = base + "ed"
             return f"{cand} {prep}" if self.spell_en.known([cand]) else f"{base} {prep}"
         para = re.sub(r"\b([A-Za-z]{3,})\s+[eoEO]\b\s+(from|in|on|by|at|to)\b", verb_ed_fix, para)
 
-        # 6) 分句输出
-        parts = re.split(r"(?<=[.!?])\s+", para)
-        parts = [self._basic_normalize(p) for p in parts if p.strip()]
-        return parts
+        # 6) Sentence segmentation output
+        #parts = re.split(r"(?<=[.!?])\s+", para)
+        #parts = [self._basic_normalize(p) for p in parts if p.strip()]
+        #return parts
+        return [para] if para.strip() else []
 
-# 进程内单例（默认 smart 清洗；按需在路由里传 mode=basic 关闭增强清洗）
+# In-process singleton (default = smart cleaning; switch to mode=basic in routes to disable enhanced cleaning)
 ocr_service = OCRService(det_lang="MULTI", rec_lang="LATIN")

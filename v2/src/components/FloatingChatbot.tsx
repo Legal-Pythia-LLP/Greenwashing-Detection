@@ -33,7 +33,6 @@ export function FloatingChatbot() {
     setIsLoading(true);
 
     try {
-      // Enhanced chatbot logic with access to all reports
       const lastSessionId = localStorage.getItem('lastSessionId');
       
       const response = await fetch("/v1/chat", {
@@ -47,7 +46,6 @@ export function FloatingChatbot() {
       });
 
       if (!response.ok) {
-        // Fallback with enhanced context awareness
         const assistantReply = generateSmartReply(userMessage);
         setMessages(prev => [...prev, { role: "assistant", content: assistantReply }]);
       } else {
@@ -85,26 +83,26 @@ export function FloatingChatbot() {
     const q = question.toLowerCase();
     
     if (q.includes("公司") && q.includes("风险")) {
-      return "根据已分析的公司报告，高风险公司主要存在以下问题：1) 模糊声明过多 2) 缺乏量化指标 3) 第三方验证不足。建议重点关注这些维度。";
+      return "Based on analyzed company reports, high-risk companies mainly have the following issues: 1) Excessive vague statements 2) Lack of quantitative metrics 3) Insufficient third-party verification. Focus on these aspects.";
     }
     
     if (q.includes("漂绿") || q.includes("greenwash")) {
-      return "漂绿识别主要关注五个维度：模糊声明、缺乏指标、误导性术语、第三方验证不足、范围界定不清。每个维度都会给出0-100的评分，综合评估漂绿风险。";
+      return "Greenwashing detection focuses on five dimensions: vague statements, lack of metrics, misleading terms, insufficient third-party verification, and unclear scope. Each dimension is scored 0-100 to assess greenwashing risk.";
     }
     
     if (q.includes("报告") && (q.includes("上传") || q.includes("分析"))) {
-      return "您可以在上传页面提交ESG报告进行分析。系统会自动提取关键声明、进行风险评估，并生成详细的漂绿分析报告。";
+      return "You can submit ESG reports on the upload page for analysis. The system will automatically extract key statements, assess risks, and generate a detailed greenwashing analysis report.";
     }
     
     if (q.includes("评分") || q.includes("分数")) {
-      return "评分系统采用0-100分制，70分以上为高风险。评分基于AI分析结合外部验证结果，包括新闻验证和Wikirate数据库验证。";
+      return "The scoring system uses a 0-100 scale, with scores above 70 considered high risk. Scores are based on AI analysis combined with external verification, including news and Wikirate database checks.";
     }
     
     if (q.includes("建议") || q.includes("recommendation")) {
-      return "基于分析结果，建议：1) 增加具体量化指标 2) 提供第三方认证 3) 明确披露范围和边界 4) 避免使用模糊表述 5) 定期更新数据并保持透明度。";
+      return "Based on the analysis, recommendations include: 1) Increase specific quantitative targets 2) Provide third-party certifications 3) Clearly disclose scope and boundaries 4) Avoid vague statements 5) Regularly update data and maintain transparency.";
     }
     
-    return "我可以帮您解答ESG分析、漂绿识别、公司风险评估等相关问题。您也可以询问具体公司的分析结果或上传新报告进行分析。";
+    return "I can help answer questions related to ESG analysis, greenwashing detection, and company risk assessment. You can also inquire about specific company analysis results or upload new reports for analysis.";
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

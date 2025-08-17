@@ -12,36 +12,15 @@ import { TrendingUp, AlertTriangle, FileText } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { APIService } from "@/services/api.service";
 
-const trendData = [
-  { date: "05-01", risks: 5 },
-  { date: "05-08", risks: 7 },
-  { date: "05-15", risks: 6 },
-  { date: "05-22", risks: 9 },
-  { date: "05-29", risks: 12 },
-  { date: "06-05", risks: 15 },
-];
+// Remove hard-coded trend data; will fetch from API
 
 const riskColor = (score: number) => score >= 80 ? "destructive" : "secondary";
 
-// Helper function to get greenwashing type translation key
-const getGreenwashingTypeKey = (type: string) => {
-  const typeMap: { [key: string]: string } = {
-    "模糊声明": "vagueStatements",
-    "缺乏指标": "lackOfMetrics", 
-    "误导性术语": "misleadingTerms",
-    "第三方验证不足": "insufficientVerification"
-  };
-  return typeMap[type] || type;
-};
 
 const Index = () => {
   const { t } = useTranslation();
   
-  const [stats, setStats] = useState<{
-    high_risk_companies: number;
-    pending_reports: number;
-    high_priority_reports: number;
-  } | null>(null);
+  const [stats, setStats] = useState(null);
   
   const [companies, setCompanies] = useState<Array<{
     id: string;
@@ -51,6 +30,8 @@ const Index = () => {
     date: string;
   }> | null>(null);
 
+  const [trendData, setTrendData] = useState(null);
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -59,14 +40,10 @@ const Index = () => {
         setLoading(true);
         const data = await APIService.getDashboardData();
         if (data) {
-          setStats(data.stats || {
-            high_risk_companies: 128,
-            pending_reports: 34,
-            high_priority_reports: 9
-          });
+          setStats(data.stats || null);
           
           if (data.companies && data.companies.length > 0) {
-            // 按风险分数降序排序
+            // Sort by risk score descending
             const sortedCompanies = [...data.companies].sort((a, b) => b.score - a.score);
             setCompanies(sortedCompanies);
           } else {
@@ -76,6 +53,13 @@ const Index = () => {
           setStats(null);
           setCompanies([]);
         }
+        
+        // Fetch trend data
+        const trendsData = await APIService.getRiskTrends();
+        if (trendsData) {
+          setTrendData(trendsData);
+        }
+        
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
         setStats(null);
@@ -121,12 +105,14 @@ const Index = () => {
             </CardHeader>
             <CardContent>
               <div className="text-4xl font-bold text-destructive mb-1">
-                {stats ? stats.high_risk_companies : 0}
+                {stats?.high_risk_companies ?? '-'}
               </div>
-              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                <TrendingUp className="h-3 w-3" />
-                {t('dashboard.newInLast7Days')} 15
-              </div>
+              {stats?.high_risk_companies && (
+                <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                  <TrendingUp className="h-3 w-3" />
+                  {t('dashboard.newInLast7Days')}
+                </div>
+              )}
             </CardContent>
           </Card>
           
@@ -139,13 +125,15 @@ const Index = () => {
             </CardHeader>
             <CardContent>
               <div className="text-4xl font-bold text-primary mb-1">
-                {stats ? stats.pending_reports : 0}
+                {stats?.pending_reports ?? '-'}
               </div>
-              <div className="text-sm text-muted-foreground">
-                {t('dashboard.highPriority')} <span className="font-semibold text-accent">
-                  {stats ? stats.high_priority_reports : 0}
-                </span>
-              </div>
+              {stats?.pending_reports && (
+                <div className="text-sm text-muted-foreground">
+                  {t('dashboard.highPriority')} <span className="font-semibold text-accent">
+                    {stats?.high_priority_reports ?? '-'}
+                  </span>
+                </div>
+              )}
             </CardContent>
           </Card>
           
@@ -155,7 +143,8 @@ const Index = () => {
             </CardHeader>
             <CardContent className="h-32">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={trendData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                {trendData ? (
+                  <LineChart data={trendData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" hide />
                   <YAxis hide />
@@ -173,7 +162,12 @@ const Index = () => {
                     strokeWidth={3} 
                     dot={{ fill: 'hsl(var(--accent))', strokeWidth: 2, r: 4 }}
                   />
-                </LineChart>
+                  </LineChart>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                    {t('dashboard.loading')}
+                  </div>
+                )}
               </ResponsiveContainer>
             </CardContent>
           </Card>

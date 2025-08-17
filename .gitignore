@@ -6,3 +6,4 @@ venv/
 downloads/
 v2/node_modules/
 reports/
+tests/

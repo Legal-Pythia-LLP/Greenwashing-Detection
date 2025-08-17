@@ -7,7 +7,7 @@ from app.models.report import Report
 from app.config import Base
 from fastapi import Depends
 
-# 数据库依赖
+# Database dependencies
 def get_db_session():
     db = next(get_db())
     try:
@@ -15,7 +15,19 @@ def get_db_session():
     finally:
         db.close()
 
-# 风险趋势数据
+# Dashboard global variables
+dashboard_stats = {
+    "high_risk_companies": 0,
+    "pending_reports": 0,
+    "high_priority_reports": 0,
+    "last_updated": 0
+}
+
+# Analysis result storage
+analysis_results_by_session = {}
+company_reports_index = {}
+
+# Risk trend data
 risk_trends = [
     {"date": "2025-01-01", "risks": 5, "new_risks": 2},
     {"date": "2025-01-08", "risks": 7, "new_risks": 3},
@@ -25,10 +37,10 @@ risk_trends = [
     {"date": "2025-02-05", "risks": 15, "new_risks": 6},
 ]
 
-# 获取所有公司报告列表
+# Get all company report list
 def get_all_companies(db: Session = Depends(get_db_session)) -> List[Dict[str, Any]]:
-    """获取所有公司及其最新分析报告"""
-    # 查询每个公司的最新报告
+    """Get all companies and their latest analysis reports"""
+    # Query latest report for each company
     subquery = db.query(
         Report.company_name,
         Report.session_id,
@@ -58,18 +70,18 @@ def get_all_companies(db: Session = Depends(get_db_session)) -> List[Dict[str, A
             ).count()
         })
     
-    # 按风险评分排序
+    # Sort by risk score
     return sorted(companies, key=lambda x: x["score"], reverse=True)
 
 def _get_main_risk_type(report: Dict[str, Any]) -> str:
-    """从报告中提取主要风险类型"""
+    """Extract main risk type from report"""
     breakdown = report.get("breakdown", [])
     if not breakdown:
-        return "未知类型"
+        return "Unknown type"
     
-    # 找到评分最高的类型
+    # Find the highest scoring type
     max_score = 0
-    main_type = "未知类型"
+    main_type = "Unknown type"
     for item in breakdown:
         score = item.get("value", 0)
         if isinstance(score, str):
@@ -79,12 +91,12 @@ def _get_main_risk_type(report: Dict[str, Any]) -> str:
                 score = 0
         if score > max_score:
             max_score = score
-            main_type = item.get("type", "未知类型")
+            main_type = item.get("type", "Unknown type")
     
     return main_type
 
 def _format_date(timestamp: float) -> str:
-    """格式化时间戳为日期字符串"""
+    """Format timestamp to date string"""
     try:
         import datetime
         dt = datetime.datetime.fromtimestamp(timestamp)
@@ -93,10 +105,10 @@ def _format_date(timestamp: float) -> str:
         return "2025-01-01"
 
 def update_dashboard_stats():
-    """更新仪表盘统计数据"""
+    """Update dashboard statistics"""
     global dashboard_stats
     
-    # 计算高风险公司数量 (评分 >= 70)
+    # Calculate high-risk company count (score >= 70)
     high_risk_count = 0
     pending_count = len(analysis_results_by_session)
     
@@ -117,20 +129,72 @@ def update_dashboard_stats():
         "last_updated": time.time()
     })
 
+from app.models.chat import ChatMessage, Conversation
+from datetime import datetime
+
 def store_analysis_result(session_id: str, company_name: str, data: Dict[str, Any]):
-    """存储分析结果并更新索引"""
-    # 添加时间戳
+    """Store analysis results and update index"""
+    # Add timestamp
     data["created_at"] = time.time()
     data["company_name"] = company_name
     
-    # 存储分析结果
+    # Store analysis results
     analysis_results_by_session[session_id] = data
     
-    # 更新公司索引
+    # Update company index
     if company_name not in company_reports_index:
         company_reports_index[company_name] = []
     if session_id not in company_reports_index[company_name]:
         company_reports_index[company_name].append(session_id)
     
-    # 更新仪表盘统计
+    # Update dashboard statistics
     update_dashboard_stats()
+
+def save_conversation(db: Session, conversation_id: str, user_id: str, messages: List[ChatMessage]):
+    """Save conversation context to database"""
+    try:
+        # Convert message list to JSON storable format
+        messages_data = [msg.dict() for msg in messages]
+        
+        # Create or update conversation record
+        conversation = db.query(Conversation).filter(
+            Conversation.conversation_id == conversation_id
+        ).first()
+        
+        if conversation:
+            # Update existing conversation
+            conversation.messages = json.dumps(messages_data)
+            conversation.updated_at = datetime.utcnow()
+        else:
+            # Create new conversation
+            conversation = Conversation(
+                conversation_id=conversation_id,
+                user_id=user_id,
+                messages=json.dumps(messages_data),
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            db.add(conversation)
+        
+        db.commit()
+        return True
+    except Exception as e:
+        db.rollback()
+        print(f"Failed to save conversation: {str(e)}")
+        return False
+
+def get_conversation(db: Session, conversation_id: str) -> List[ChatMessage]:
+    """Get conversation context from database"""
+    try:
+        conversation = db.query(Conversation).filter(
+            Conversation.conversation_id == conversation_id
+        ).first()
+        
+        if not conversation:
+            return []
+            
+        messages_data = json.loads(conversation.messages)
+        return [ChatMessage(**msg) for msg in messages_data]
+    except Exception as e:
+        print(f"Failed to get conversation: {str(e)}")
+        return []

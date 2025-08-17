@@ -16,7 +16,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-// import { Switch } from "@/switch";
 import { Separator } from "@/components/ui/separator";
 import TopNav from "@/components/TopNav";
 import Seo from "@/components/Seo";
@@ -47,85 +46,82 @@ const Upload = () => {
 
   const generateSessionId = () => "s_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
 
-const handleStart = async () => {
-  if (!files || files.length === 0) {
-    toast.error(t("upload.selectFirstMsg"));
-    return;
-  }
+  const handleStart = async () => {
+    if (!files || files.length === 0) {
+      toast.error(t("upload.selectFirstMsg"));
+      return;
+    }
 
-  const formData = new FormData();
-  formData.append("file", files[0]);
-  // 如果需要可选语言，可以加上这一行：
-  // formData.append("overrided_language", "zh");
+    const formData = new FormData();
+    formData.append("file", files[0]);
+    // If optional language is needed, add this line:
+    // formData.append("overrided_language", "zh");
 
-  try {
-    setUploading(true);
-    setUploadProgress(10);
-    setUploadStage(t("upload.uploadingFile"));
+    try {
+      setUploading(true);
+      setUploadProgress(10);
+      setUploadStage(t("upload.uploadingFile"));
 
-    // 模拟进度更新
-    const progressInterval = setInterval(() => {
-      setUploadProgress((prev) => {
-        if (prev < 90) return prev + 10;
-        return prev;
-      });
-    }, 2000);
+      // Simulate progress update
+      const progressInterval = setInterval(() => {
+        setUploadProgress((prev) => {
+          if (prev < 90) return prev + 10;
+          return prev;
+        });
+      }, 2000);
 
-    // 调用 API 服务，使用FormData上传
-    const data = await APIService.uploadFile(formData);
-    
-    // 处理重复文件情况
-    if (data?.status === "duplicate") {
+      // Call API service with FormData upload
+      const data = await APIService.uploadFile(formData);
+      
+      // Handle duplicate file situation
+      if (data?.status === "duplicate") {
+        clearInterval(progressInterval);
+        setUploadProgress(0);
+        setUploadStage("");
+        setDuplicateResult(data);
+        setShowDuplicateDialog(true);
+        return;
+      }
+
+      const sessionId = data?.session_id;
       clearInterval(progressInterval);
+      setUploadProgress(100);
+      setUploadStage(t("upload.analysisComplete"));
+
+      if (!sessionId) {
+        toast.error("Backend did not return session_id, unable to view analysis results");
+        return;
+      }
+
+      toast.success(t("upload.analysisCreated"));
+      try {
+        localStorage.setItem("lastSessionId", sessionId);
+      } catch {}
+
+      navigate(`/company/${sessionId}`);
+    } catch (e: any) {
+      console.error("Upload error:", e);
+
+      // Provide more friendly error messages
+      let errorMessage = t("upload.uploadFailedRetry");
+
+      if (e?.message) {
+        if (e.message.includes("timeout")) {
+          errorMessage = t("upload.errors.timeout");
+        } else if (e.message.includes("ECONNABORTED")) {
+          errorMessage = t("upload.errors.connectionFailed");
+        } else {
+          errorMessage = e.message;
+        }
+      }
+
+      toast.error(errorMessage);
+    } finally {
+      setUploading(false);
       setUploadProgress(0);
       setUploadStage("");
-      setDuplicateResult(data);
-      setShowDuplicateDialog(true);
-      return;
     }
-
-    const sessionId = data?.session_id;
-    clearInterval(progressInterval);
-    setUploadProgress(100);
-    setUploadStage(t("upload.analysisComplete"));
-
-    if (!sessionId) {
-      toast.error("后端未返回 session_id，无法查看分析结果");
-      return;
-    }
-
-    toast.success(t("upload.analysisCreated"));
-    try {
-      localStorage.setItem("lastSessionId", sessionId);
-    } catch {}
-
-    navigate(`/company/${sessionId}`);
-  } catch (e: any) {
-    console.error("Upload error:", e);
-
-    // 提供更友好的错误信息
-    let errorMessage = t("upload.uploadFailedRetry");
-
-    if (e?.message) {
-      if (e.message.includes("timeout") || e.message.includes("超时")) {
-        errorMessage = t("upload.errors.timeout");
-      } else if (e.message.includes("ECONNABORTED")) {
-        errorMessage = t("upload.errors.connectionFailed");
-      } else if (e.message.includes("API 接口不存在")) {
-        errorMessage = t("upload.errors.apiConfigError");
-      } else {
-        errorMessage = e.message;
-      }
-    }
-
-    toast.error(errorMessage);
-  } finally {
-    setUploading(false);
-    setUploadProgress(0);
-    setUploadStage("");
-  }
-};
-
+  };
 
   return (
     <div className="min-h-screen [background-image:var(--gradient-soft)]">
@@ -154,7 +150,7 @@ const handleStart = async () => {
               aria-label={t('upload.selectFile')}
             >
               <p className="mb-3">{t('upload.selectFile')}</p>
-              <Input type="file" accept=".pdf,.doc,.docx" multiple onChange={(e) => onFiles(e.target.files)} />
+              <Input type="file" accept=".pdf,image/*" multiple onChange={(e) => onFiles(e.target.files)} />
             </div>
 
             <Separator className="my-6" />
@@ -187,7 +183,7 @@ const handleStart = async () => {
                 <Input id="note" placeholder={t('upload.notePlaceholder')} />
               </div>
 
-              {/* 上传进度显示 */}
+              {/* Upload progress display */}
               {uploading && (
                 <div className="space-y-3">
                   <div className="flex justify-between text-sm">
@@ -217,7 +213,7 @@ const handleStart = async () => {
       </main>
       <FloatingChatbot />
 
-      {/* 重复文件对话框 */}
+      {/* Duplicate file dialog */}
       <AlertDialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -241,11 +237,13 @@ const handleStart = async () => {
                 setUploadStage(t("upload.reanalyzing"));
                 setShowDuplicateDialog(false);
                 
-                // 强制重新分析，添加随机session_id和force_new标志
+                // Force reanalysis, add random session_id and force_new flag
                 const formData = new FormData();
                 formData.append("file", files[0]);
                 formData.append("session_id", `s_${Date.now()}`);
                 formData.append("force_new", "true");
+                // Add current language setting
+                formData.append("language", localStorage.getItem("i18nextLng") || "en");
                 
                 const data = await APIService.uploadFile(formData);
                 const sessionId = data?.session_id;

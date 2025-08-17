@@ -40,7 +40,7 @@ const Chat = () => {
         body: JSON.stringify({ message: userMsg.content, session_id: sessionId }),
       });
       if (!res.ok || !res.body) {
-        throw new Error("聊天接口不可用或缺少分析会话，请先上传报告");
+        throw new Error("Chat API unavailable or analysis session missing, please upload a report first");
       }
 
       const reader = res.body.getReader();
@@ -59,8 +59,8 @@ const Chat = () => {
       setMessages((prev) => [...prev, { role: "assistant", content: acc }]);
       setCurrentMessage(null);
     } catch (e: any) {
-      const msg = e?.message || "发送失败";
-      setMessages((prev) => [...prev, { role: "assistant", content: `错误：${msg}` }]);
+      const msg = e?.message || "Sending failed";
+      setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${msg}` }]);
     } finally {
       setSendingMessage(false);
     }
@@ -74,27 +74,27 @@ const Chat = () => {
   }, [handleSend]);
 
   const handleValidate = useCallback(() => {
-    // 预留校验行为
+    // Placeholder for validation behavior
   }, []);
 
   return (
     <div className="min-h-screen [background-image:var(--gradient-soft)]">
       <Seo
-        title="聊天与分析 | Explainable AI"
-        description="上传文档并与 Explainable AI 对话，查看可解释的漂绿分析结果。"
+        title="Chat & Analysis | Explainable AI"
+        description="Upload documents and chat with Explainable AI to view explainable greenwashing analysis results."
         canonical={typeof window !== 'undefined' ? window.location.href : undefined}
         jsonLd={{
           "@context": "https://schema.org",
           "@type": "WebPage",
-          name: "聊天与分析",
-          description: "上传文档并与 Explainable AI 对话，查看可解释的漂绿分析结果。",
+          name: "Chat & Analysis",
+          description: "Upload documents and chat with Explainable AI to view explainable greenwashing analysis results.",
         }}
       />
       <TopNav />
       <main className="max-w-5xl mx-auto px-4 py-6">
         <header className="mb-4">
-          <h1 className="text-2xl font-bold tracking-tight">聊天与分析</h1>
-          <p className="text-muted-foreground mt-1">已接入 docs/web 聊天界面（示例数据）。</p>
+          <h1 className="text-2xl font-bold tracking-tight">Chat & Analysis</h1>
+          <p className="text-muted-foreground mt-1">Connected to docs/web chat interface (sample data).</p>
         </header>
         <section>
           <div className="rounded-md border bg-background/60">
@@ -125,4 +125,3 @@ const Chat = () => {
 };
 
 export default Chat;
-

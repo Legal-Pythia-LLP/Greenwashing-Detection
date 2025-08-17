@@ -41,7 +41,7 @@ export function useChat(sessionId: string) {
       
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        content: '抱歉，聊天服务暂时不可用，请稍后再试。',
+        content: 'Sorry, the chat service is temporarily unavailable. Please try again later.',
         role: 'assistant',
         timestamp: new Date(),
       };

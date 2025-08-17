@@ -11,7 +11,7 @@ router = APIRouter()
 def _to_percentage(x: Any) -> float:
     try:
         val = float(x)
-        # 兼容 0-10 或 0-100
+        # Compatible with 0-10 or 0-100 scale
         return val * 10 if val <= 10 else val
     except Exception:
         return 0.0
@@ -24,10 +24,10 @@ def _transform(session_data: Dict[str, Any]) -> Dict[str, Any]:
     overall = 0.0
     breakdown: List[Dict[str, Any]] = []
 
-    # 尝试解析 metrics 结构
+    # Try to parse metrics structure
     if isinstance(metrics, str):
         try:
-            # 如果是字符串，尝试解析 JSON
+            # If string, try to parse as JSON
             import json
             metrics = json.loads(metrics)
         except:
@@ -45,20 +45,20 @@ def _transform(session_data: Dict[str, Any]) -> Dict[str, Any]:
                     "value": _to_percentage(score)
                 })
 
-    # 证据与外部信息
+    # Evidence and external information
     validations = session_data.get("validations") or []
     quotations = session_data.get("quotations") or []
 
     evidence_groups: Dict[str, List[Dict[str, str]]] = {}
 
-    # 先用 quotations 提供的 explanation
+    # First use explanations from quotations
     for q in quotations if isinstance(quotations, list) else []:
         q_text = q.get("quotation") or ""
         why = q.get("explanation") or ""
-        cat = "关键声明"
+        cat = "Key statements"
         evidence_groups.setdefault(cat, []).append({"quote": q_text, "why": why})
 
-    # 再补充 validations 的结论要点
+    # Then supplement with validation highlights
     for v in validations if isinstance(validations, list) else []:
         q = v.get("quotation", {})
         q_text = (q.get("quotation") if isinstance(q, dict) else None) or ""
@@ -70,7 +70,7 @@ def _transform(session_data: Dict[str, Any]) -> Dict[str, Any]:
         if wiki:
             why_parts.append(f"Wikirate: {str(wiki)[:200]}")
         if q_text or why_parts:
-            evidence_groups.setdefault("外部验证要点", []).append({
+            evidence_groups.setdefault("External validation highlights", []).append({
                 "quote": q_text,
                 "why": " | ".join(why_parts)
             })
@@ -79,11 +79,11 @@ def _transform(session_data: Dict[str, Any]) -> Dict[str, Any]:
         {"type": k, "items": v} for k, v in evidence_groups.items()
     ]
 
-    # 从 final_synthesis 抓一段摘要
+    # Extract a summary from final_synthesis
     summary_src = session_data.get("final_synthesis") or session_data.get("response") or ""
     summary = summary_src.strip().split("\n\n")[0][:200] if isinstance(summary_src, str) else ""
 
-    # 外部信息：从 news_validation/wikirate_validation 抽取简单列表（兜底为空）
+    # External info: simple list from news_validation/wikirate_validation (fallback to empty)
     external: List[str] = []
     nv = session_data.get("news_validation")
     if isinstance(nv, str) and nv.strip():
@@ -97,7 +97,7 @@ def _transform(session_data: Dict[str, Any]) -> Dict[str, Any]:
         "company_name": company_name,
         "overall_score": round(overall, 1),
         "summary": summary,
-        "breakdown": breakdown[:8],  # 限制长度
+        "breakdown": breakdown[:8],  # Limit length
         "evidence": evidence,
         "final_synthesis": session_data.get("final_synthesis") or "",
         "external": external,
@@ -110,7 +110,7 @@ async def get_report(session_id: str, db: Session = Depends(get_db)) -> Dict[str
     if not report:
         raise HTTPException(status_code=404, detail="Session not found")
     
-    # 构建与之前兼容的数据结构
+    # Build data structure compatible with previous version
     data = {
         "session_id": session_id,
         "company_name": report.company_name,
