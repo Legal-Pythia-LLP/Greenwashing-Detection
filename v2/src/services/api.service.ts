@@ -1,15 +1,15 @@
 import axios from "axios";
 
-// 创建 axios 实例，连接到后端 API
+// Create an axios instance, connecting to the backend API
 export const api = axios.create({
   baseURL: "http://127.0.0.1:8000/v1",
-  timeout: 0, // 禁用超时，让请求一直等待
+  timeout: 0, // Disable timeout, let requests wait indefinitely
 });
 
 export class APIService {
-  // 文件上传接口
+  // File upload API
   static async uploadFile(formData: FormData) {
-    // 现在接受完整的FormData对象，可以包含多个字段
+    // Now accepts the complete FormData object, which can include multiple fields
 
     try {
       console.log(
@@ -20,10 +20,10 @@ export class APIService {
         headers: {
           "Content-Type": "multipart/form-data",
         },
-        timeout: 0, // 禁用超时，ESG 分析可能需要很长时间
+        timeout: 0, // Disable timeout, ESG analysis may take a long time
       });
       console.log("Upload successful:", response.data);
-      return response.data; // 返回后端数据，包含 session_id
+      return response.data; // Return backend data, including session_id
     } catch (error: any) {
       console.error("Upload error details:", {
         message: error.message,
@@ -33,20 +33,20 @@ export class APIService {
         data: error.response?.data,
       });
 
-      // 提供更友好的错误信息
+      // Provide a friendlier error message
       if (error.code === "ECONNABORTED") {
-        throw new Error("上传超时，请检查网络连接或稍后重试");
+        throw new Error("Upload timed out, please check your network connection or try again later");
       } else if (error.response?.status === 404) {
-        throw new Error("API 接口不存在，请检查后端服务配置");
+        throw new Error("API endpoint not found, please check backend service configuration");
       } else if (error.response?.status >= 500) {
-        throw new Error("服务器内部错误，请稍后重试");
+        throw new Error("Internal server error, please try again later");
       } else {
-        throw new Error(`上传失败: ${error.message}`);
+        throw new Error(`Upload failed: ${error.message}`);
       }
     }
   }
 
-  // 聊天接口
+  // Chat API
   static async sendChatMessage(message: string, session_id: string) {
     try {
       const response = await api.post("/chat", {
@@ -60,7 +60,7 @@ export class APIService {
     }
   }
 
-  // 获取报告接口
+  // Get report API
   static async getReport(session_id: string) {
     try {
       const response = await api.get(`/report/${session_id}`);
@@ -71,7 +71,7 @@ export class APIService {
     }
   }
 
-  // 获取 WikiRate 数据接口
+  // Get WikiRate data API
   static async getWikiRateData(company_name: string) {
     try {
       const response = await api.get(`/wikirate/${company_name}`);
@@ -82,7 +82,7 @@ export class APIService {
     }
   }
 
-  // 获取仪表板数据接口
+  // Get dashboard data API
   static async getDashboardData() {
     try {
       const [statsRes, companiesRes] = await Promise.all([
@@ -96,7 +96,7 @@ export class APIService {
       };
     } catch (error) {
       console.error("Dashboard error:", error);
-      // 返回空数据而不是抛出错误
+      // Return empty data instead of throwing an error
       return {
         stats: {
           high_risk_companies: 0,
@@ -105,6 +105,17 @@ export class APIService {
         },
         companies: []
       };
+    }
+  }
+
+  // Get risk trends data API
+  static async getRiskTrends() {
+    try {
+      const response = await api.get("/dashboard/trends");
+      return response.data;
+    } catch (error) {
+      console.error("Risk trends error:", error);
+      throw error;
     }
   }
 }

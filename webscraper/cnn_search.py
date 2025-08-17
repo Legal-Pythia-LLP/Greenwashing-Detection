@@ -22,7 +22,6 @@ def url_validity(url: str) -> bool:
     return not any(x in url for x in ["videos", "live", "shows"])
 
 
-
 def date_conversion(date: str) -> datetime:
     components = date.split(" ")
     if len(components) == 3 and components[2] == "ago":
@@ -62,7 +61,7 @@ def url_download(links: dict, directory: str = "downloads") -> Dict[str, str]:
 
 def cnn_search(name: str) -> Dict[str, str]:
     """
-    使用 Selenium 抓取 CNN 搜索结果，下载并返回本地路径
+    Use Selenium to crawl CNN search results, download, and return local paths.
     """
     depth = 20
     delta = 365 * 2
@@ -86,14 +85,14 @@ def cnn_search(name: str) -> Dict[str, str]:
                 EC.presence_of_element_located((By.CSS_SELECTOR, "div.container__headline"))
             )
         except:
-            print(f"[DEBUG] CNN 第 {page_count} 页无文章，结束")
+            print(f"[DEBUG] No articles on CNN page {page_count}, ending")
             break
 
         soup = BeautifulSoup(driver.page_source, "html.parser")
         cards = soup.select("div.container__headline")
 
         if not cards:
-            print(f"[DEBUG] CNN 第 {page_count} 页无文章，结束")
+            print(f"[DEBUG] No articles on CNN page {page_count}, ending")
             break
 
         for card in cards:
@@ -127,10 +126,10 @@ def cnn_search(name: str) -> Dict[str, str]:
     driver.quit()
 
     if web_dictionary:
-        print(f"[DEBUG] 抓取到 CNN 文章数量: {len(web_dictionary)}")
+        print(f"[DEBUG] Number of CNN articles crawled: {len(web_dictionary)}")
         for i, title in enumerate(web_dictionary.keys(), 1):
             print(f"  [CNN] {title}")
         return url_download(web_dictionary)
     else:
-        print("[DEBUG] CNN 未找到符合条件的文章")
+        print("[DEBUG] No qualifying CNN articles found")
         return None

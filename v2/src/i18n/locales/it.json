@@ -81,7 +81,17 @@
     "uploadFailed": "Caricamento fallito ({{status}})",
     "analysisCreated": "Analisi creata, generazione report...",
     "backendNotConnected": "Backend non connesso, creato report di anteprima locale",
-    "uploadFailedRetry": "Caricamento fallito, riprova più tardi"
+    "uploadFailedRetry": "Caricamento fallito, riprova più tardi",
+    "duplicateDialog": {
+      "title": "Analisi Duplicata Rilevata",
+      "description": "Questo file è già stato analizzato in precedenza. Vuoi rianalizzarlo o visualizzare i risultati esistenti?",
+      "showOld": "Mostra risultati esistenti",
+      "reanalyze": "Sì, rianalizza"
+    },
+    "reanalyzing": "Rianalisi in corso...",
+    "errors": {
+      "reanalyzeFailed": "Rianalisi fallita"
+    }
   },
   "company": {
     "title": "Rapporto di Analisi Aziendale",

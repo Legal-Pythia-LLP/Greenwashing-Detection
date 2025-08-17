@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Optional, TypedDict
 from pydantic import BaseModel
 
-# ESG 分析的返回结果结构
+# Return result structure for ESG analysis
 class ESGAnalysisResult(BaseModel):
     greenwashing_score: float
     confidence: float
@@ -23,9 +23,9 @@ class ESGAnalysisState(TypedDict):
     initial_thoughts: List[str]
     selected_thoughts: List[str]
     document_analysis: List[str]
-    quotations: List[Dict[str, Any]]  # ✅ 加这一行
-    tool_plan: List[Dict[str, Any]]   # ✅ 如果你要传 tool 决策
-    validations: List[Dict[str, Any]] # ✅ 如果你有验证逻辑
+    quotations: List[Dict[str, Any]]  # ✅ Add this line
+    tool_plan: List[Dict[str, Any]]   # ✅ If you need to pass tool decisions
+    validations: List[Dict[str, Any]] # ✅ If you have validation logic
     news_validation: str
     wikirate_validation: str
     metrics: str

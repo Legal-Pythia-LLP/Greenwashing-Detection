@@ -22,7 +22,7 @@ interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
   onOpen: () => void;
-  message: any; // 支持对象或字符串
+  message: any; // Supports object or string
 }
 
 interface ScoreData {
@@ -32,7 +32,7 @@ interface ScoreData {
 
 interface AnalysisResult {
   metrics: ScoreData[];
-  overallScore: number | null; // 单个总体分数
+  overallScore: number | null; // Single overall score
 }
 
 function ExtractScore(message: any): AnalysisResult {
@@ -105,8 +105,8 @@ export const Sidebar = ({ isOpen, onClose, onOpen, message }: SidebarProps) => {
       >
         <div className='flex flex-col h-full justify-between py-4'>
           <div className='flex items-center justify-between mb-3'>
-            <h3 className='text-sm font-medium text-muted-foreground'>分析面板</h3>
-            <Button variant='ghost' size='icon' onClick={onClose} aria-label='关闭'>
+            <h3 className='text-sm font-medium text-muted-foreground'>Analysis Panel</h3>
+            <Button variant='ghost' size='icon' onClick={onClose} aria-label='Close'>
               <X className='h-4 w-4' />
             </Button>
           </div>

@@ -22,11 +22,11 @@ from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmb
 # )
 
 llm = ChatGoogleGenerativeAI(
-    model="gemini-2.0-flash",  # flash比较快
-    temperature=0,  # 控制生成文本的“随机性” 0 表示完全确定，0.7 稍微有创造性，1.0 比较随机
-    max_tokens=None,  # 最多生成多少 token（字词） None 表示使用模型默认（可不写）
-    timeout=None,  # 单次请求最长等待时间 None 表示默认等待，可设置为 60 秒等
-    max_retries=2,  # max_retries出错时重试次数 推荐设置为 2~3
+  model="gemini-2.0-flash",  # flash is faster
+  temperature=0,  # Controls text generation "randomness" - 0 means completely deterministic, 0.7 slightly creative, 1.0 more random
+  max_tokens=None,  # Maximum tokens to generate - None means use model default (can be omitted)
+  timeout=None,  # Maximum wait time per request - None means default wait, can set to 60s etc
+  max_retries=2,  # Max retries on error - recommended 2-3
     # other params...
 )
 
@@ -46,4 +46,4 @@ except Exception as e:
     print(f"Warning: Could not load ClimateBERT model: {e}")
     print("ESG classification will be disabled.")
     climatebert_tokenizer = None
-    climatebert_model = None 
+    climatebert_model = None

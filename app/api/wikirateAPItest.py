@@ -6,7 +6,7 @@
 
 # router = APIRouter()
 
-# # 新增：Wikirate API测试端点
+# # New: Wikirate API test endpoint
 # @router.post("/testwikirate")
 # async def test_wikirate_connection(company_name: str = Form(...)) -> Dict[str, Any]:
 #     """Test Wikirate API connection and data retrieval"""
@@ -65,7 +65,7 @@ async def test_wikirate_connection(company_name: str = Form(...)) -> Dict[str, A
     try:
         wikirate_client = WikirateClient(WIKIRATE_API_KEY)
 
-        # ✅ 測試搜尋公司
+        # ✅ Test company search
         company_data = wikirate_client.search_company(company_name)
 
         if not company_data:
@@ -74,7 +74,7 @@ async def test_wikirate_connection(company_name: str = Form(...)) -> Dict[str, A
                 "message": f"Company '{company_name}' not found in Wikirate"
             }
 
-        # ✅ 測試抓指標（使用你 canvas 內的新版 get_company_metrics）
+        # ✅ Test fetching metrics (using your canvas's new get_company_metrics)
         metrics_data = wikirate_client.get_company_metrics(company_name)
 
         if "error" in metrics_data:
