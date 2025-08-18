@@ -1,7 +1,7 @@
 // API Configuration
 export const API_CONFIG = {
   // Use local backend in development environment
-  BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/v1',
+  BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/v2',
   
   // API Endpoints
   ENDPOINTS: {

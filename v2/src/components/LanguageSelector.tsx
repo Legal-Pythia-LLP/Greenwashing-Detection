@@ -28,7 +28,7 @@ export const LanguageSelector = () => {
     
     // Notify backend about language change for chatbot responses
     try {
-      await fetch('/api/v1/set-language', {
+      await fetch('/api/v2/set-language', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

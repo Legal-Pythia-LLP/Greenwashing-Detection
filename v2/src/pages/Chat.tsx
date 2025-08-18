@@ -34,7 +34,7 @@ const Chat = () => {
     setSendingMessage(true);
 
     try {
-      const res = await fetch("/v1/chat", {
+      const res = await fetch("/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: userMsg.content, session_id: sessionId }),

@@ -24,10 +24,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(upload_router, prefix="/v1")
+app.include_router(upload_router, prefix="/v2")
 app.include_router(chat_router)
 app.include_router(wikirate_router)
-app.include_router(report_router, prefix="/v1")
+app.include_router(report_router, prefix="/v2")
 app.include_router(dashboard_router)
 
 

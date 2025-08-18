@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { MessageCircle, X, Send, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { APIService } from "@/services/api.service";
 
 interface Message {
   role: "user" | "assistant";
@@ -35,35 +36,15 @@ export function FloatingChatbot() {
     try {
       const lastSessionId = localStorage.getItem('lastSessionId');
       
-      const response = await fetch("/v1/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: userMessage,
-          session_id: lastSessionId || "global_chat",
-          context: "floating_chatbot"
-        }),
-      });
-
-      if (!response.ok) {
+      try {
+        const response = await APIService.sendChatMessage(
+          userMessage,
+          lastSessionId || "global_chat"
+        );
+        setMessages(prev => [...prev, { role: "assistant", content: response || t('common.error') }]);
+      } catch (error) {
         const assistantReply = generateSmartReply(userMessage);
         setMessages(prev => [...prev, { role: "assistant", content: assistantReply }]);
-      } else {
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
-        let assistantContent = "";
-
-        if (reader) {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            
-            const chunk = decoder.decode(value);
-            assistantContent += chunk;
-          }
-        }
-
-        setMessages(prev => [...prev, { role: "assistant", content: assistantContent || t('common.error') }]);
       }
     } catch (error) {
       console.error("Chat error:", error);

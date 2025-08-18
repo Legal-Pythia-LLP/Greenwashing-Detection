@@ -9,7 +9,7 @@ from app.models.report import Report
 import json
 
 router = APIRouter(
-    prefix="/v1/dashboard",
+    prefix="/v2/dashboard",
     tags=["dashboard"],
 )
 

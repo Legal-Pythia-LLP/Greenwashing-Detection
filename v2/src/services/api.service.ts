@@ -1,9 +1,10 @@
 import axios from "axios";
+import { API_CONFIG } from "@/config/api.config";
 
 // Create an axios instance, connecting to the backend API
 export const api = axios.create({
-  baseURL: "http://127.0.0.1:8000/v1",
-  timeout: 0, // Disable timeout, let requests wait indefinitely
+  baseURL: API_CONFIG.BASE_URL,
+  timeout: API_CONFIG.TIMEOUT,
 });
 
 export class APIService {

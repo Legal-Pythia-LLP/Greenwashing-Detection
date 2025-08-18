@@ -152,11 +152,18 @@ def store_analysis_result(session_id: str, company_name: str, data: Dict[str, An
 
 def save_conversation(db: Session, conversation_id: str, user_id: str, messages: List[ChatMessage]):
     """Save conversation context to database"""
+    print(f"\n===== DB SAVE START =====\n"
+          f"Conversation: {conversation_id}\n"
+          f"User: {user_id}\n"
+          f"Message count: {len(messages)}\n"
+          f"=========================")
     try:
         # Convert message list to JSON storable format
+        print("[DB] Converting messages to JSON format")
         messages_data = [msg.dict() for msg in messages]
         
         # Create or update conversation record
+        print(f"[DB] Querying conversation: {conversation_id}")
         conversation = db.query(Conversation).filter(
             Conversation.conversation_id == conversation_id
         ).first()
@@ -177,10 +184,13 @@ def save_conversation(db: Session, conversation_id: str, user_id: str, messages:
             db.add(conversation)
         
         db.commit()
+        print("[DB] Conversation saved successfully")
+        print("===== DB SAVE END =====")
         return True
     except Exception as e:
         db.rollback()
-        print(f"Failed to save conversation: {str(e)}")
+        print(f"[DB ERROR] Failed to save conversation: {str(e)}")
+        print("===== DB SAVE END WITH ERROR =====")
         return False
 
 def get_conversation(db: Session, conversation_id: str) -> List[ChatMessage]:
