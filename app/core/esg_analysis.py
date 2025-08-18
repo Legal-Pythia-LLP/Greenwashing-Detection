@@ -476,6 +476,7 @@ def create_esg_analysis_graph():
 def create_esg_agent(session_id: str, vector_store: Chroma, company_name: str) -> AgentExecutor:
     """Create a ReAct agent for ESG analysis"""
     
+    print(f"[DEBUG] Starting agent creation for session {session_id}")
     from langchain.agents import initialize_agent
     from langchain.agents.agent_types import AgentType
     
@@ -510,6 +511,7 @@ def create_esg_agent(session_id: str, vector_store: Chroma, company_name: str) -
     vector_store.as_retriever(search_kwargs={"k": 3})
     
     # Initialize agent
+    print(f"[DEBUG] Initializing agent for session {session_id}")
     agent = initialize_agent(
         tools=tools,
         llm=llm,
@@ -519,6 +521,33 @@ def create_esg_agent(session_id: str, vector_store: Chroma, company_name: str) -
         max_iterations=15,
         early_stopping_method="force"
     )
+    print(f"[DEBUG] Agent initialized successfully for session {session_id}")
+    
+    # save session
+    print(f"[DEBUG] Saving session configuration for {session_id}")
+    from app.core.store import save_session
+    from app.db import get_db
+    db = next(get_db())
+    try:
+        session_data = {
+            "agent_config": {
+                "company_name": company_name,
+                "tools": [tool.name for tool in tools],
+                "vector_store_path": f"data/vector_stores/{session_id}",
+                "session_id": session_id
+            },
+            "vector_store_path": f"data/vector_stores/{session_id}",
+            "company_name": company_name
+        }
+        print(f"[DEBUG] Session data to save: {json.dumps(session_data, indent=2)}")
+        save_result = save_session(session_id, session_data, db)
+        print(f"[DEBUG] Session save result: {save_result}")
+    except Exception as e:
+        print(f"[ERROR] Failed to save session: {str(e)}")
+        raise
+    finally:
+        db.close()
+        print(f"[DEBUG] DB connection closed for session {session_id}")
     
     return agent
 

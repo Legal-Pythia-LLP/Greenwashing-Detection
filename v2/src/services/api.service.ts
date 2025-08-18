@@ -119,4 +119,15 @@ export class APIService {
       throw error;
     }
   }
+
+  // Get conversation history API
+  static async getConversation(session_id: string) {
+    try {
+      const response = await api.get(`/get_conversation/${session_id}`);
+      return response.data;
+    } catch (error) {
+      console.error("Get conversation error:", error);
+      throw error;
+    }
+  }
 }

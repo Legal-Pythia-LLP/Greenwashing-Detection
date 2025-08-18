@@ -176,11 +176,44 @@ def store_analysis_result(session_id: str, company_name: str, data: Dict[str, An
     # Update dashboard statistics
     update_dashboard_stats()
 
-def save_session(session_id: str, session_data: Dict, db: Session = Depends(get_db_session)):
+def save_session(session_id: str, session_data: Dict, db: Session):
     """Save session with vector store and analysis results to database"""
+    print(f"[SESSION DEBUG] Saving session {session_id} with data: {json.dumps(session_data, indent=2)}")
+    
+    # Validate required fields
+    required_fields = ["vector_store_path", "company_name", "agent_config"]
+    for field in required_fields:
+        if field not in session_data:
+            print(f"[SESSION WARNING] Missing required field: {field} in session data")
+            print(f"[SESSION DEBUG] Full session data: {json.dumps(session_data, indent=2)}")
+            return False
+
     try:
-        # Convert session data to JSON
-        session_json = json.dumps(session_data)
+        # Include agent configuration in session data
+        from app.core.esg_analysis import agent_executors
+        if session_id in agent_executors:
+            agent = agent_executors[session_id]
+            session_data["agent_config"] = {
+                "company_name": agent.tools[1].company_name,
+                "tools": [tool.name for tool in agent.tools],
+                "vector_store_path": session_data.get("vector_store_path", ""),
+                "session_id": session_id
+            }
+            # Ensure required fields are present
+            session_data["company_name"] = agent.tools[1].company_name  # add company_name
+            if "vector_store_path" not in session_data:
+                session_data["vector_store_path"] = f"data/vector_stores/{session_id}"
+        
+        # Convert session data to proper message format
+        from app.models.chat import ChatMessage
+        from datetime import datetime
+        message = ChatMessage(
+            content=json.dumps(session_data),
+            sender="system",
+            timestamp=datetime.utcnow()
+        )
+        messages_data = [message.dict()]
+        session_json = json.dumps(messages_data)
         
         # Check if session exists
         existing = db.query(Conversation).filter(
@@ -213,16 +246,70 @@ def get_session(session_id: str, db: Session = Depends(get_db_session)) -> Optio
     """Get session data from database if exists"""
     try:
         print(f"[SESSION DEBUG] Looking up session {session_id}")
+        print(f"[SESSION DEBUG] DB connection active: {db.is_active}")
+        
         session = db.query(Conversation).filter(
             Conversation.conversation_id == session_id
         ).first()
         
         if not session:
             print(f"[SESSION DEBUG] No session found for {session_id}")
+            print(f"[SESSION DEBUG] Available sessions: {db.query(Conversation.conversation_id).all()}")
             return None
             
         print(f"[SESSION DEBUG] Found session with {len(session.messages)} bytes of data")
-        return json.loads(session.messages)
+        print(f"[SESSION DEBUG] Session created at: {session.created_at}, updated at: {session.updated_at}")
+        
+        try:
+            messages_data = json.loads(session.messages)
+            
+            # Handle both old (direct session_data) and new (ChatMessage list) formats
+            if isinstance(messages_data, list) and len(messages_data) > 0:
+                # New format - extract session_data from first message content
+                session_data = json.loads(messages_data[0].get("content", "{}"))
+            else:
+                # Old format - use messages_data directly
+                session_data = messages_data
+                
+            print(f"[SESSION DEBUG] Successfully parsed session data for {session_id}")
+            print(f"[SESSION DEBUG] Session data type: {type(session_data)}")
+        except Exception as e:
+            print(f"[SESSION ERROR] Failed to parse session messages: {str(e)}")
+            print(f"[SESSION DEBUG] Raw messages (first 200 chars): {session.messages[:200]}")
+            return None
+        
+        # Rebuild agent if config exists
+        if "agent_config" in session_data:
+            print(f"[AGENT DEBUG] Found agent config in session data")
+            print(f"[AGENT DEBUG] Agent config: {json.dumps(session_data['agent_config'], indent=2)}")
+            
+            from app.core.esg_analysis import create_esg_agent, agent_executors
+            from app.core.vector_store import load_vector_store
+            
+            if session_id not in agent_executors:
+                print(f"[AGENT DEBUG] Need to rebuild agent for session {session_id}")
+                vector_store = load_vector_store(session_id)
+                
+                if vector_store:
+                    print(f"[AGENT DEBUG] Vector store loaded successfully for {session_id}")
+                    try:
+                        agent = create_esg_agent(
+                            session_id,
+                            vector_store,
+                            session_data["agent_config"]["company_name"]
+                        )
+                        agent_executors[session_id] = agent
+                        print(f"[AGENT REBUILD] Successfully rebuilt agent for session {session_id}")
+                        print(f"[AGENT DEBUG] Agent tools: {[tool.name for tool in agent.tools]}")
+                    except Exception as e:
+                        print(f"[AGENT ERROR] Failed to rebuild agent: {str(e)}")
+                        return session_data
+                else:
+                    print(f"[AGENT WARNING] No vector store found for {session_id}")
+            else:
+                print(f"[AGENT DEBUG] Agent already exists for session {session_id}")
+        
+        return session_data
     except Exception as e:
         print(f"[SESSION ERROR] Failed to get session {session_id}: {str(e)}")
         print(f"[SESSION DEBUG] Current DB state: {db.is_active}")
@@ -274,19 +361,44 @@ def save_conversation(db: Session, conversation_id: str, user_id: str, messages:
 def get_conversation(db: Session, conversation_id: str) -> List[ChatMessage]:
     """Get conversation context from database"""
     try:
+        print(f"\n[CONVERSATION DEBUG] Loading conversation {conversation_id}")
         conversation = db.query(Conversation).filter(
             Conversation.conversation_id == conversation_id
         ).first()
         
-        if not conversation or not conversation.messages:
+        if not conversation:
+            print(f"[CONVERSATION DEBUG] No conversation record found for {conversation_id}")
+            return []
+            
+        if not conversation.messages:
+            print(f"[CONVERSATION DEBUG] Empty messages for conversation {conversation_id}")
             return []
             
         try:
+            print(f"[CONVERSATION DEBUG] Raw messages length: {len(conversation.messages)}")
             messages_data = json.loads(conversation.messages)
+            
             if not isinstance(messages_data, list):
+                print(f"[CONVERSATION DEBUG] Messages data is not a list: {type(messages_data)}")
                 return []
-            return [ChatMessage.from_dict(msg) for msg in messages_data]
-        except json.JSONDecodeError:
+                
+            print(f"[CONVERSATION DEBUG] Parsed {len(messages_data)} messages")
+            
+            messages = []
+            for idx, msg in enumerate(messages_data):
+                try:
+                    messages.append(ChatMessage.from_dict(msg))
+                    print(f"[CONVERSATION DEBUG] Successfully parsed message {idx + 1}")
+                except Exception as e:
+                    print(f"[CONVERSATION ERROR] Failed to parse message {idx + 1}: {str(e)}")
+                    print(f"[CONVERSATION DEBUG] Problematic message: {msg}")
+                    
+            print(f"[CONVERSATION DEBUG] Returning {len(messages)} valid messages")
+            return messages
+            
+        except json.JSONDecodeError as e:
+            print(f"[CONVERSATION ERROR] JSON decode failed: {str(e)}")
+            print(f"[CONVERSATION DEBUG] Raw messages: {conversation.messages[:200]}...")
             return []
     except Exception as e:
         print(f"Failed to get conversation: {str(e)}")

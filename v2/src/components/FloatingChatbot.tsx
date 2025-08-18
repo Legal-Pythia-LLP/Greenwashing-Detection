@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -15,15 +15,73 @@ interface Message {
 export function FloatingChatbot() {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      content: t('chatbot.welcome')
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isInitializing, setIsInitializing] = useState(false);
+
+  // Prevent body scroll when chat is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
     }
-  ]);
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
+  // Load conversation history when opening chat
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const loadHistory = async () => {
+      setIsInitializing(true);
+      try {
+        const lastSessionId = localStorage.getItem('lastSessionId');
+        if (!lastSessionId) {
+          setMessages([{
+            role: "assistant",
+            content: t('chatbot.welcome')
+          }]);
+          return;
+        }
+
+        const history = await APIService.getConversation(lastSessionId);
+        if (history?.messages?.length > 0) {
+          setMessages(history.messages.map(msg => ({
+            role: msg.sender as "user" | "assistant",
+            content: msg.content
+          })));
+        } else {
+          setMessages([{
+            role: "assistant",
+            content: t('chatbot.welcome')
+          }]);
+        }
+      } catch (error) {
+        console.error("Failed to load conversation:", error);
+        setMessages([{
+          role: "assistant",
+          content: t('chatbot.welcome')
+        }]);
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+
+    loadHistory();
+  }, [isOpen, t]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  // Auto scroll to bottom when messages change
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView();
+    }
+  }, [messages]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -137,7 +195,10 @@ export function FloatingChatbot() {
 
             {/* Messages */}
             <div className="flex-1 m-6 mt-4 modern-card p-6 overflow-hidden">
-              <div className="h-full overflow-y-auto space-y-6 pr-2">
+              <div 
+                className="h-full overflow-y-auto space-y-6 pr-2"
+                onWheel={(e) => e.stopPropagation()}
+              >
                 {messages.map((msg, idx) => (
                   <div
                     key={idx}
@@ -164,6 +225,7 @@ export function FloatingChatbot() {
                     </div>
                   </div>
                 )}
+                <div ref={messagesEndRef} />
               </div>
             </div>
 

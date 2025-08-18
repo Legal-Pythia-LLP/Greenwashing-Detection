@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
-from starlette.responses import StreamingResponse
+from starlette.responses import StreamingResponse, JSONResponse
 from datetime import datetime
 from sqlalchemy.orm import Session
 from app.models import ChatBaseMessage, ChatMessage
@@ -8,6 +8,38 @@ from app.core.store import save_conversation, get_conversation, get_session, loa
 from app.db import get_db
 
 router = APIRouter()
+
+@router.get("/get_conversation/{session_id}")
+async def get_full_conversation(
+    session_id: str,
+    db: Session = Depends(get_db)
+) -> JSONResponse:
+    """Get full conversation history for a session"""
+    print(f"\n===== GET CONVERSATION REQUEST =====\n"
+          f"Session: {session_id}\n"
+          f"=============================")
+    
+    conversation = get_conversation(db, session_id)
+    print(f"[DB] Loaded {len(conversation)} history messages")
+    
+    if not conversation:
+        print(f"[DB WARNING] No conversation found for session: {session_id}")
+        raise HTTPException(
+            status_code=404,
+            detail="No conversation history found"
+        )
+    
+    return JSONResponse({
+        "session_id": session_id,
+        "messages": [
+            {
+                "sender": msg.sender,
+                "content": msg.content,
+                "timestamp": msg.timestamp.isoformat()
+            }
+            for msg in conversation
+        ]
+    })
 
 @router.post("/chat")
 async def chat_with_agent(
@@ -48,16 +80,34 @@ async def chat_with_agent(
     print(f"[AGENT DEBUG] Current active sessions: {list(agent_executors.keys())}")
     
     # Recreate agent if session exists but agent is missing
-    if session and not agent and session.get("agent_executor"):
-        print(f"[AGENT] Recreating agent for existing session: {session_id}")
+    if session and not agent and isinstance(session, dict):
+        print(f"[AGENT] Attempting to recreate agent for session: {session_id}")
         print(f"[AGENT DEBUG] Session data keys: {session.keys()}")
-        vector_store = load_vector_store(session_id)
-        print(f"[VECTOR STORE DEBUG] Vector store {'found' if vector_store else 'not found'}")
-        if vector_store:
-            from app.core.esg_analysis import create_esg_agent
-            agent = create_esg_agent(session_id, vector_store, session.get("company_name", "unknown"))
-            agent_executors[session_id] = agent
-            print(f"[AGENT DEBUG] Agent successfully recreated for session: {session_id}")
+        
+        # Check if we have required fields to recreate agent
+        required_fields = ["vector_store_path", "company_name"]
+        missing_fields = [field for field in required_fields if field not in session]
+        
+        if missing_fields:
+            print(f"[AGENT ERROR] Missing required fields to recreate agent: {missing_fields}")
+        else:
+            vector_store = load_vector_store(session_id)
+            print(f"[VECTOR STORE DEBUG] Vector store {'found' if vector_store else 'not found'}")
+            
+            if vector_store:
+                try:
+                    from app.core.esg_analysis import create_esg_agent
+                    agent = create_esg_agent(
+                        session_id,
+                        vector_store,
+                        session["company_name"]
+                    )
+                    agent_executors[session_id] = agent
+                    print(f"[AGENT DEBUG] Agent successfully recreated for session: {session_id}")
+                except Exception as e:
+                    print(f"[AGENT ERROR] Failed to recreate agent: {str(e)}")
+            else:
+                print("[AGENT ERROR] Vector store not found - cannot recreate agent")
     
     if not agent or not session:
         print(f"[AGENT ERROR] No valid session found for: {session_id}")

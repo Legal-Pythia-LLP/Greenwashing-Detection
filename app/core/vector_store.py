@@ -27,3 +27,16 @@ text_splitter = RecursiveCharacterTextSplitter(
     length_function=len,
     separators=["\n\n", "\n", ".", "!", "?", ",", " ", ""]
 )
+
+def load_vector_store(session_id: str):
+    """Load persisted vector store from disk"""
+    from pathlib import Path
+    from app.config import VECTOR_STORE_DIR
+    persist_path = VECTOR_STORE_DIR / session_id
+    if not persist_path.exists():
+        return None
+    from langchain_community.vectorstores import Chroma
+    return Chroma(
+        persist_directory=str(persist_path),
+        embedding_function=embedding_model
+    )
