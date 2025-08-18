@@ -497,13 +497,17 @@ def create_esg_agent(session_id: str, vector_store: Chroma, company_name: str) -
         )
     ]
     
-    # Create memory
-    memory = ConversationBufferWindowMemory(
+    # Create memory with summary and vector store
+    from langchain.memory import ConversationSummaryMemory
+    memory = ConversationSummaryMemory(
+        llm=llm,
         memory_key="chat_history",
-        k=10,
         return_messages=True
     )
     memories[session_id] = memory
+    
+    # Add vector store as long-term memory
+    vector_store.as_retriever(search_kwargs={"k": 3})
     
     # Initialize agent
     agent = initialize_agent(
