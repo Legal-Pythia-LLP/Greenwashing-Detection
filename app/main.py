@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import upload_router, chat_router, wikirate_router, report_router, dashboard_router
+from app.api import upload_router, chat_router, wikirate_router, report_router, dashboard_router,language
 from app.db import init_db
 
 app = FastAPI(title="ESG Greenwashing Analysis API")
@@ -29,6 +29,7 @@ app.include_router(chat_router, prefix="/v2")
 app.include_router(wikirate_router)
 app.include_router(report_router, prefix="/v2")
 app.include_router(dashboard_router)
+app.include_router(language.router, prefix="/v1")
 
 
 if __name__ == "__main__":

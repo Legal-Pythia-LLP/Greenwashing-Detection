@@ -10,6 +10,8 @@ import { FloatingChatbot } from "@/components/FloatingChatbot";
 import { ResponsiveContainer, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Tooltip } from "recharts";
 import { useQuery } from "@tanstack/react-query";
 import { APIService } from "../services/api.service";
+import i18next from "i18next";
+
 
 /**
  * Extracts the specified section from final_synthesis
@@ -20,21 +22,63 @@ import { APIService } from "../services/api.service";
 function extractSection(text: string, sectionNumber: number): string {
   if (!text || typeof text !== "string") return "";
 
-  // Match **2. ... up to next **3. ... or end of text
   const regex = new RegExp(
-    `\\*\\*${sectionNumber}\\.\\s[\\s\\S]*?(?=\\n\\n\\*\\*${sectionNumber + 1}\\.\\s|\\n\\n\\*\\*${sectionNumber + 2}\\.\\s|$)`,
+    `(?:^|\\n)${sectionNumber}\\.\\s[^\\n]*\\n([\\s\\S]*?)(?=\\n{2,}${sectionNumber + 1}\\.\\s|$)`,
     "i"
   );
 
   const match = text.match(regex);
   if (match) {
-    // Remove "**2. ..." title
-    return match[0]
-      .replace(new RegExp(`^\\*\\*${sectionNumber}\\..*?\\*\\*`), "")
-      .trim();
+    return match[1].trim();
   }
-
   return "";
+}
+
+function highlightGreenwashing(text: string) {
+  if (!text) return "";
+  const keywords = [
+    // ==== English buzzwords ====
+    "climate", "carbon", "emissions?", "footprint", "neutrality",
+    "low[- ]?carbon","high[- ]?carbon", "carbon[- ]?neutral", "net[- ]?zero", "climate[- ]?neutral",
+    "climate[- ]?positive", "offsets?", "carbon credits?", "sustainable",
+    "responsible", "green", "eco[- ]?friendly", "renewable", "environmentally[- ]?friendly",
+    "aligned with science", "ambitious goals?", "science[- ]?based targets?",
+
+    // ==== German buzzwords ====
+    "klima", "kohlenstoff", "emission(en)?", "fußabdruck", "neutralität",
+    "niedrig[- ]?kohlenstoff", "CO2[- ]?neutral", "klimaneutral", "klimapositiv",
+    "kompensationen?", "CO2[- ]?gutschriften?", "nachhaltig", "verantwortungsvoll",
+    "grün", "umweltfreundlich", "erneuerbar", "wissenschafts[- ]?basierte Ziele?",
+
+    // ==== Italian buzzwords ====
+    "clima", "carbonio", "emissioni?", "impronta", "neutralità",
+    "basso[- ]?carbonio", "carbon[- ]?neutral[e]?", "neutro rispetto al clima", 
+    "clima positivo", "compensazioni?", "crediti di carbonio?", "sostenibile",
+    "responsabile", "verde", "eco[- ]?compatibile", "rinnovabile",
+    "obiettivi basati sulla scienza", "ambiziosi obiettivi?"
+  ];
+
+
+  const regex = new RegExp(`(${keywords.join("|")})`, "gi");
+  return text.replace(
+    regex,
+    `<span style="color:green; font-weight:bold;">$1</span>`
+  );
+}
+
+
+
+function formatBullets(text?: string): string {
+  if (!text) return "";
+  return text
+    .replace(/^\*\s*/gm, "")
+    .replace(
+      /^([A-Za-z\/ ,&'-]{1,80}):/gm,
+      (match, p1) => {
+        if (p1.length > 60) return match; 
+        return `<strong>${p1}:</strong>`;
+      }
+    );
 }
 
 function parseFinalSynthesis(synthesis?: string) {
@@ -89,7 +133,7 @@ const riskTone = (score: number) => {
 };
 
 const Company = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { id } = useParams();
   const mockData = (mock as any)[id ?? "acme"] ?? (mock as any).acme;
 
@@ -103,6 +147,47 @@ const Company = () => {
     retry: 0,
   });
 
+const rawLang = i18n.language || "en";
+const langMap: Record<string, string> = {
+  en: "en", "en-US": "en", "en-GB": "en",
+  de: "de", "de-DE": "de",
+  it: "it", "it-IT": "it",
+ };
+const preferred = langMap[rawLang] || rawLang.slice(0, 2) || "en";
+const fsI18n = (apiRes?.data as any)?.final_synthesis_i18n || null;
+const pickFinal =
+   (fsI18n && (fsI18n[preferred] || fsI18n["de"] || fsI18n["it"] || fsI18n["zh"] || fsI18n["es"])) ||
+   (apiRes?.data as any)?.final_synthesis ||
+   (apiRes?.data as any)?.response ||
+   "";
+
+function extractSectionOneBody(text: string): string {
+  if (!text) return "";
+  const re = /(?:^|\n)\s*(?:\*\*)?\s*1\.\s+[^\n]*(?:\*\*)?\s*\n([\s\S]*?)(?=\n\s*(?:\*\*)?\s*2\.\s+|$)/i;
+  const m = text.match(re);
+  return m ? m[1].trim() : "";
+}
+
+function sanitizeSynthesis(text: string): string {
+  if (!text) return "";
+  const prefaces = [
+    /^okay,\s*here'?s\s+the\s+.*?translation.*?$/i,
+    /^hier\s+ist\s+die\s+deutsche\s+übersetzung.*?$/i,
+    /^ecco\s+la\s+traduzione.*?$/i
+  ];
+  const firstHeading = text.search(/^##\s+|^\s*\d+\.\s+/gmi);
+  if (firstHeading === -1) return text;
+  const head = text
+    .slice(0, firstHeading)
+    .split("\n")
+    .filter((line) => !prefaces.some((re) => re.test(line.trim())))
+    .join("\n");
+  const tail = text.slice(firstHeading);
+  return ((head.trim() ? `${head}\n` : "") + tail).trim();
+}
+
+
+  
   const viewLS = (() => {
     try {
       if (!id) return null;
@@ -122,11 +207,14 @@ const Company = () => {
       return null;
     }
   })();
-
+const cleanedFinal = sanitizeSynthesis(pickFinal);
 const view = apiRes?.data
   ? {
       name: apiRes.data.company_name,
-      final_synthesis: apiRes.data.final_synthesis ?? apiRes.data.response ?? "",
+
+
+      final_synthesis: pickFinal,
+
       score: (() => {
         try {
           if (apiRes.data.graphdata) {
@@ -149,18 +237,12 @@ const view = apiRes?.data
           return Math.round(apiRes.data.overall_score ?? 0);
         }
       })(),
+      
       summary: (() => {
-        if (apiRes.data.final_synthesis) {
-          const synthesis = apiRes.data.final_synthesis;
-          const execSummaryMatch = synthesis.match(
-            /\*\*1\. Executive Summary\*\*([\s\S]*?)(?=\n\n\*\*2\.)/
-          );
-          if (execSummaryMatch) {
-            return execSummaryMatch[1].trim();
-          }
-          return synthesis.substring(0, 200) + "...";
-        }
-        return apiRes.data.summary ?? "No summary available";
+          const body = extractSectionOneBody(cleanedFinal);
+          if (body) return body;
+          const firstPara = cleanedFinal.split(/\n{2,}/)[0]?.trim() || "";
+          return firstPara || cleanedFinal.slice(0, 200);
       })(),
       breakdown: (() => {
         try {
@@ -175,24 +257,36 @@ const view = apiRes?.data
                 graphdata = JSON.parse(cleanData);
               }
             }
+
+            const lang = (i18next.language || "en").slice(0, 2);
+
             return Object.entries(graphdata)
               .filter(([key]) => key !== 'overall_greenwashing_score')
-              .map(([key, value]: [string, any]) => ({
-                type: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-                value: Math.round((value?.score ?? 0) * 10)
-              }));
+              .map(([key, value]: [string, any]) => {
+                const score = Math.round((value?.score ?? 0) * 10);
+                const type_i18n = value?.type_i18n ?? null;
+
+                return {
+                  type: type_i18n?.[lang] ?? key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                  value: score
+                };
+              });
           }
-          return (apiRes.data.breakdown ?? []).map((d: any) => ({
-            type: d.type,
-            value: Math.round(d.value ?? 0)
-          }));
+
+          return (apiRes.data.breakdown ?? []).map((d: any) => {
+            const lang = (i18next.language || "en").slice(0, 2);
+            return {
+              type: d.type_i18n?.[lang] ?? d.type,
+              value: Math.round(d.value ?? 0)
+            };
+          });
         } catch (e) {
           console.error('Failed to parse breakdown data:', e);
           return [];
         }
       })(),
       evidenceGroups: (() => {
-        const sec2 = extractSection(apiRes.data.final_synthesis ?? "", 2);
+        const sec2 = extractSection(pickFinal ?? "", 2);
         return sec2
           ? [{
               type: "Key Findings and Evidence from Document Analysis",
@@ -201,12 +295,12 @@ const view = apiRes?.data
           : [];
       })(),
       external: (() => {
-        const sec4 = extractSection(apiRes.data.final_synthesis ?? "", 4);
+        const sec4 = extractSection(pickFinal ?? "", 4);
         return sec4 ? [sec4.trim()] : [];
       })(),
-      recommendedSteps: (() => {
-        const sec5 = extractSection(apiRes.data.final_synthesis ?? "", 5);
-        return sec5 ? sec5.trim() : "";
+      riskAssessment: (() => {
+        const sec5 = extractSection(pickFinal ?? "", 5);
+        return sec5 ? [sec5.trim()] : [];
       })(),
     }
   : viewLS ?? { ...mockData, evidenceGroups: null };
@@ -279,7 +373,7 @@ return (
 
         <Card>
           <CardHeader>
-            <CardTitle>1.Risk Type Breakdown</CardTitle>
+              <CardTitle>1. {t('company.riskBreakdown')}</CardTitle>
           </CardHeader>
           <CardContent className="h-64">
             {safeBreakdown.length > 0 ? (
@@ -311,51 +405,172 @@ return (
       <section id="evidence" className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>2.Key Findings and Evidence from Document Analysis</CardTitle>
+            <CardTitle>2. {t('company.keyFindings')}</CardTitle>
+          </CardHeader>
+            <CardContent>
+              {Array.isArray(view?.evidenceGroups) && view.evidenceGroups.length > 0 ? (
+                (() => {
+                  const raw = view.evidenceGroups[0].items[0].quote;
+
+                    const TOKENS = {
+                      quotation: ["Quotation", "Citazione", "Zitat"],
+                      explanation: ["Explanation", "Spiegazione", "Erläuterung"],
+                      revisedExplanation: ["Revised Explanation", "Spiegazione Riveduta", "Revidierte Erläuterung"],
+                      score: [
+                        "Greenwashing Likelihood Score",
+                        "Punteggio di Probabilità di Greenwashing",
+                        "Greenwashing-Wahrscheinlichkeitswert",
+                      ],
+                      revisedScore: ["Revised Score", "Punteggio Riveduto", "Revidierter Score"],
+                      externalVerification: [
+                        "External Verification Conducted and Verification Results",
+                        "Verifica Esterna Eseguita e Risultati della Verifica",
+                        "Durchgeführte externe Verifizierung und Verifizierungsergebnisse",
+                      ],
+                      furtherVerification: [
+                        "Further Verification Required",
+                        "Ulteriore Verifica Richiesta",
+                        "Weiterer Verifizierungsbedarf",
+                      ],
+                    };
+
+                    const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+                    const QUOTATION_RE = new RegExp(
+                      `(?:^|\\n)(${TOKENS.quotation.map(esc).join("|")})\\s*:`,
+                      "i"
+                    );
+
+                    function formatEvidenceDetailsLocalized(text?: string): string {
+                      if (!text) return "";
+                      const heads = [
+                        ...TOKENS.explanation,
+                        ...TOKENS.revisedExplanation,
+                        ...TOKENS.score,
+                        ...TOKENS.revisedScore,
+                        ...TOKENS.externalVerification,
+                        ...TOKENS.furtherVerification,
+                      ].map(esc);
+
+                      const headRegex = new RegExp(`^(${heads.join("|")})\\s*:`, "gmi");
+
+                    
+                      return text
+                        .replace(headRegex, "<strong>$1:</strong>")
+                        .replace(/^\*\s*(News Validation|Wikirate Validation|Validazione delle Notizie|Validazione Wikirate|Nachrichtenvalidierung|Wikirate-Validierung):/gmi, "* <strong>$1:</strong>");
+                    }
+
+                    const cleaned = raw.replace(/\b2\.\d+\s+/g, "");
+
+                    const firstQIndex = cleaned.search(QUOTATION_RE);
+                    const summary = firstQIndex > -1 ? cleaned.slice(0, firstQIndex).trim() : cleaned.trim();
+                    const rest = firstQIndex > -1 ? cleaned.slice(firstQIndex) : "";
+
+                    type Entry = { start: number; label: string; matchLen: number };
+                    const entries: Entry[] = [];
+                    if (rest) {
+                      const reGlobal = new RegExp(QUOTATION_RE.source, "gi");
+                      let m: RegExpExecArray | null;
+                      while ((m = reGlobal.exec(rest)) !== null) {
+                        entries.push({ start: m.index, label: m[1], matchLen: m[0].length });
+                      }
+                    }
+
+                    const blocks = entries.map((e, i) => {
+                      const start = e.start + e.matchLen;
+                      const end = i + 1 < entries.length ? entries[i + 1].start : rest.length;
+                      return { label: e.label, text: rest.slice(start, end).trim() };
+                    });
+
+                    return (
+                      <div className="space-y-6">
+                        {summary && <div className="whitespace-pre-line mt-2">{summary}</div>}
+
+                        {blocks.map((block, idx) => {
+                          const qIndex = idx + 1;
+                          if (!block.text) return null;
+
+                          const [firstLine, ...restLines] = block.text.split("\n").map((l) => l.trim());
+
+                          return (
+                            <div key={`q-${qIndex}`}>
+                              <h4 className="font-semibold">{`2.${qIndex} ${block.label}`}</h4>
+
+                              {firstLine && (
+                                <blockquote
+                                  className="italic text-muted-foreground mt-1"
+                                  dangerouslySetInnerHTML={{
+                                    __html: highlightGreenwashing(firstLine.replace(/^["']?|["']?$/g, "")),
+                                  }}
+                                />
+                              )}
+
+
+                              {restLines.length > 0 && (
+                                <div
+                                  className="whitespace-pre-line mt-2"
+                                  dangerouslySetInnerHTML={{
+                                    __html: formatEvidenceDetailsLocalized(restLines.join("\n")).replace(/\n/g, "<br/>"),
+                                  }}
+                                />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()
+                ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No report content available</p>
+                </div>
+              )}
+            </CardContent>
+        </Card>
+
+        <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>3. {t('company.recommendations')}</CardTitle>
           </CardHeader>
           <CardContent>
-            {Array.isArray(view?.evidenceGroups) && view.evidenceGroups.length > 0 ? (
-              <div className="whitespace-pre-line">{view.evidenceGroups[0].items[0].quote}</div>
+            {Array.isArray(view?.external) && view.external.length > 0 ? (
+              <div
+                className="whitespace-pre-line"
+                dangerouslySetInnerHTML={{
+                  __html: formatBullets(view.external[0]).replace(/\n/g, "<br/>")
+                }}
+              />
             ) : (
-              <div className="text-center py-8 text-muted-foreground">
+              <div className="text-center py-4 text-muted-foreground">
                 <p>No report content available</p>
               </div>
             )}
           </CardContent>
         </Card>
 
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>3.Specific Recommendations for Stakeholders</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {Array.isArray(view?.external) && view.external.length > 0 ? (
-                <div className="whitespace-pre-line">{view.external[0]}</div>
-              ) : (
-                <div className="text-center py-4 text-muted-foreground">
-                  <p>No report content available</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card id="actions">
-            <CardHeader>
-              <CardTitle>4.Risk Assessment and Concerns</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {view.recommendedSteps ? (
-                <div className="whitespace-pre-line">{view.recommendedSteps}</div>
-              ) : (
-                <p>No recommendations available</p>
-              )}
-              <div className="mt-4 flex gap-2">
-                <Button asChild><Link to="/upload">{t('company.addReports')}</Link></Button>
-                <Button variant="secondary">{t('company.exportPdf')}</Button>
+        <Card>
+          <CardHeader>
+            <CardTitle>4. {t('company.riskAssessmentConcerns')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {Array.isArray(view?.riskAssessment) && view.riskAssessment.length > 0 ? (
+              <div
+                className="whitespace-pre-line"
+                dangerouslySetInnerHTML={{
+                  __html: formatBullets(view.riskAssessment[0]).replace(/\n/g, "<br/>")
+                }}
+              />
+            ) : (
+              <div className="text-center py-4 text-muted-foreground">
+                <p>No report content available</p>
               </div>
-            </CardContent>
-          </Card>
+            )}
+          </CardContent>
+        </Card>
+
+
+
         </div>
       </section>
     </main>

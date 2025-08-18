@@ -14,6 +14,7 @@ from langchain_community.vectorstores import Chroma
 from langchain.agents import AgentExecutor
 from langchain.memory import ConversationBufferWindowMemory
 from langchain.tools import Tool
+import re
 import json
 from app.core.utils import is_esg_related
 from app.core.company import extract_company_info
@@ -360,6 +361,9 @@ def calculate_metrics(state: ESGAnalysisState) -> ESGAnalysisState:
     except Exception as e:
         state["error"] = f"Error calculating metrics: {str(e)}"
         return state
+    
+def clean_markdown_stars(text: str) -> str:
+    return re.sub(r"\*\*(.*?)\*\*", r"\1", text)
 
 def synthesize_final_report(state: ESGAnalysisState) -> ESGAnalysisState:
     if state.get("error"):
@@ -409,6 +413,7 @@ def synthesize_final_report(state: ESGAnalysisState) -> ESGAnalysisState:
     try:
         response = llm.invoke([HumanMessage(content=prompt)])
         state["final_synthesis"] = response.content
+        state["final_synthesis"] = clean_markdown_stars(state["final_synthesis"])
         return state
     except Exception as e:
         state["error"] = f"Error generating final report: {str(e)}"

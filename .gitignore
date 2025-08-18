@@ -8,3 +8,4 @@ v2/node_modules/
 reports/
 tests/
 data/vector_stores/
+data\reports.db

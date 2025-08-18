@@ -603,11 +603,8 @@ class ESGMetricsCalculatorTool(BaseTool):
             """
             response = llm.invoke([HumanMessage(content=metrics_prompt)])
             raw = (response.content or "").strip()
-
-            # Remove ```json/``` fences
             clean = raw.replace("```json", "").replace("```", "").strip()
 
-            # Parse JSON; if fails provide zero-score skeleton to prevent frontend crash
             import json
             try:
                 data = json.loads(clean)
@@ -624,6 +621,41 @@ class ESGMetricsCalculatorTool(BaseTool):
                     "_raw_failed_to_parse": raw[:500]
                 }
 
+            translations = {
+                "Vague or unsubstantiated claims": {
+                    "de": "Vage oder unbegründete Behauptungen",
+                    "it": "Affermazioni vaghe o non comprovate",
+                },
+                "Lack of specific metrics or targets": {
+                    "de": "Mangel an spezifischen Kennzahlen oder Zielen",
+                    "it": "Mancanza di metriche o obiettivi specifici",
+                },
+                "Misleading terminology": {
+                    "de": "Irreführende Terminologie",
+                    "it": "Terminologia fuorviante",
+                },
+                "Cherry-picked data": {
+                    "de": "Ausgewählte Daten",
+                    "it": "Dati selezionati",
+                },
+                "Absence of third-party verification": {
+                    "de": "Fehlende unabhängige Überprüfung",
+                    "it": "Assenza di verifica indipendente",
+                },
+                "overall_greenwashing_score": {
+                    "de": "Gesamt-Greenwashing-Score",
+                    "it": "Punteggio complessivo di greenwashing",
+                }
+            }
+
+            for k, v in data.items():
+                if isinstance(v, dict):
+                    v.setdefault("type_i18n", {
+                        "en": k,
+                        "de": translations.get(k, {}).get("de", k),
+                        "it": translations.get(k, {}).get("it", k),
+                    })
+
             return data
 
         except Exception as e:
@@ -636,3 +668,4 @@ class ESGMetricsCalculatorTool(BaseTool):
                 "overall_greenwashing_score": {"score": 0},
                 "_error": f"Error calculating metrics: {str(e)}"
             }
+

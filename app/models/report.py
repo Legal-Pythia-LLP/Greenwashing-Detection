@@ -27,6 +27,7 @@ class Report(Base):
     analysis_time = Column(DateTime, default=datetime.utcnow)
     metrics = Column(Text)  # Stores metrics data in JSON format
     analysis_summary = Column(Text)
+    analysis_summary_i18n = Column(Text, nullable=True)
     file_id = Column(Integer, ForeignKey("report_files.id"))
     
     report_file = relationship("ReportFile", back_populates="reports")

@@ -8,7 +8,7 @@ from app.core.esg_analysis import agent_executors
 
     # Global dictionary to store analysis results
 analysis_results_by_session = defaultdict(dict)
-from app.core.utils import hash_file
+from app.core.utils import hash_file,translate_text
 from app.core.document import process_pdf_document
 from app.core.vector_store import embedding_model
 from app.config import UPLOAD_DIR, REPORT_DIR, VALID_UPLOAD_TYPES, VALID_COMPANIES
@@ -181,24 +181,35 @@ async def upload_document(
 
         # Perform ESG analysis
         print(f"[INFO] Starting ESG analysis for company: {company_name}")
-        analysis_results = await comprehensive_esg_analysis(session_id, vector_store, company_name, overrided_language or "en")
-        print(f"[INFO] ESG analysis completed successfully")
 
-        # Check analysis results for errors
-        if analysis_results.get("error"):
-            raise Exception(analysis_results["error"])
+        analysis_result = await comprehensive_esg_analysis(session_id, vector_store, company_name, "en")
+        if analysis_result.get("error"):
+            raise Exception(analysis_result["error"])
 
-        print("=== METRICS JSON ===")
-        print(analysis_results["metrics"])
+        final_synthesis_en = analysis_result.get("final_synthesis", "")
+        metrics_ref = analysis_result.get("metrics", {}) or {}
 
-        # Create Report record
+        final_synthesis_de = await translate_text(final_synthesis_en, "German")
+        final_synthesis_it = await translate_text(final_synthesis_en, "Italian")
+
+        finals_by_lang = {
+            "en": final_synthesis_en,
+            "de": final_synthesis_de,
+            "it": final_synthesis_it,
+        }
+
         report = Report(
             session_id=session_id,
             company_name=company_name,
-            overall_score = analysis_results["metrics"].get("overall_greenwashing_score", {}).get("score", 0) * 10,
-            risk_type=_get_main_risk_type(analysis_results),
-            metrics=json.dumps(analysis_results["metrics"]),
-            analysis_summary=analysis_results["final_synthesis"],
+            overall_score=(metrics_ref.get("overall_greenwashing_score", {}) or {}).get("score", 0) * 10,
+            risk_type=_get_main_risk_type({"metrics": {"breakdown": [
+                {"type": k, "value": (v or {}).get("score", 0) * 10}
+                for k, v in (metrics_ref.items() if isinstance(metrics_ref, dict) else [])
+                if k != "overall_greenwashing_score"
+            ]}}),
+            metrics=json.dumps(metrics_ref),
+            analysis_summary=final_synthesis_en,
+            analysis_summary_i18n=json.dumps(finals_by_lang),
             file_id=report_file.id
         )
         db.add(report)
@@ -209,24 +220,14 @@ async def upload_document(
             "filename": file_path.name,
             "company_name": company_name,
             "session_id": session_id,
-            "response": analysis_results["final_synthesis"],
-            "initial_analysis": analysis_results["initial_analysis"],
-            "document_analysis": analysis_results["document_analysis"],
-            "news_validation": analysis_results["news_validation"],
-            "wikirate_validation": analysis_results["wikirate_validation"],
-            "graphdata": analysis_results["metrics"],
-            "metrics": analysis_results.get("metrics"),
-            "comprehensive_analysis": analysis_results["comprehensive_analysis"],
-            "tool_plan": analysis_results.get("tool_plan"),
-            "validations": analysis_results.get("validations"),
-            "quotations": analysis_results.get("quotations"),
-            "final_synthesis": analysis_results.get("final_synthesis"),
+            "response": final_synthesis_en,
+            "graphdata": metrics_ref,
+            "metrics": metrics_ref,
+            "final_synthesis": final_synthesis_en,
+            "final_synthesis_i18n": finals_by_lang,
             "validation_complete": True,
-            "filenames": ["bbc_articles", "cnn_articles"] if company_name.lower() in VALID_COMPANIES else None,
-            "workflow_error": analysis_results.get("error"),
-            "detected_language": detected_language,
-            "overrided_language": overrided_language or "en",
         }
+
 
         # Store in memory for /report/{session_id} queries
         analysis_results_by_session[session_id] = result

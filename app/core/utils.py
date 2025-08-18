@@ -94,6 +94,18 @@ def is_article_about_company(text: str, company_name: str, aliases: list) -> boo
         print(f"[LLM error when checking article relevance]: {e}")
         return False
 
+async def translate_text(text: str, target_lang: str) -> str:
+    """
+    use llm to translate
+    target_lang: such as "Chinese", "Spanish", "German"
+    """
+    prompt = f"Translate the following ESG analysis report into {target_lang}:\n\n{text}"
+    try:
+        response = llm.invoke([HumanMessage(content=prompt)])
+        return response.content.strip()
+    except Exception as e:
+        print(f"[LLM translation failed]: {e}")
+        return text
 
 def search_and_filter_news(company_name: str, max_articles: int = 5) -> Tuple[List[str], List[str]]:
     """
