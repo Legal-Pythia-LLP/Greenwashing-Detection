@@ -3,6 +3,8 @@ from typing import Annotated, Dict, Any, Optional
 from pathlib import Path
 import json
 from collections import defaultdict
+from app.core.store import session_store, save_session
+from app.core.esg_analysis import agent_executors
 
     # Global dictionary to store analysis results
 analysis_results_by_session = defaultdict(dict)
@@ -60,6 +62,7 @@ async def upload_document(
     # ✅ If no session_id provided, generate a new one
     if not session_id:
         session_id = f"s_{uuid.uuid4().hex[:16]}"
+        print(f"[SESSION DEBUG] Generated new session ID: {session_id}")
 
     # Validate file type
     if file.content_type not in VALID_UPLOAD_TYPES:
@@ -150,10 +153,18 @@ async def upload_document(
         chunks = await process_pdf_document(str(file_path))
         print(f"[INFO] Document processed, created {len(chunks)} chunks")
 
-        # Create vector index
+        # Create and persist vector index
         from langchain_community.vectorstores import Chroma
-        vector_store = Chroma.from_documents(chunks, embedding_model)
-        document_stores[session_id] = vector_store
+        from app.config import VECTOR_STORE_DIR
+        persist_path = VECTOR_STORE_DIR / session_id
+        vector_store = Chroma.from_documents(
+            chunks, 
+            embedding_model,
+            persist_directory=str(persist_path)
+        )
+        from app.core.store import save_vector_store
+        save_vector_store(session_id, vector_store)
+        document_stores[session_id] = vector_store  # Keep in memory for current session
 
         # Extract company name
         company_query = "What is the name of the company that published this report?"
@@ -219,14 +230,41 @@ async def upload_document(
 
         # Store in memory for /report/{session_id} queries
         analysis_results_by_session[session_id] = result
-        print(f"[INFO] Analysis results stored for session {session_id}")
         print(f"[INFO] Stored data keys: {list(result.keys())}")
+        print(f"[DEBUG] Analysis results stored for session: {session_id}")
+
+        # Save session with vector store and analysis results
+        session_data = {
+            "company_name": company_name,
+            "analysis_results": result,
+            "agent_executor": True,  # Mark that agent was initialized
+            "vector_store_path": str(persist_path),
+            "created_at": datetime.now().timestamp()
+        }
+        print(f"[DEBUG] Saving session data with keys: {list(session_data.keys())}")
+        save_session(session_id, session_data, db)
+        print(f"[INFO] Session {session_id} saved to persistent storage")
+
+        # Register agent executor
+        print(f"[AGENT DEBUG] Creating agent for session: {session_id}")
+        from app.core.esg_analysis import create_esg_agent
+        agent = create_esg_agent(session_id, vector_store, company_name)
+        agent_executors[session_id] = agent
+        print(f"[AGENT DEBUG] Agent created and registered for session: {session_id}")
+        print(f"[AGENT DEBUG] Current active agents: {list(agent_executors.keys())}")
 
         return result
 
     except Exception as e:
         # Delete saved files if analysis fails
         file_path.unlink(missing_ok=True)
+        # Clean up agent if created
+        try:
+            if session_id in agent_executors:
+                print(f"[AGENT DEBUG] Cleaning up agent for failed session: {session_id}")
+                del agent_executors[session_id]
+        except NameError:
+            pass  # agent_executors not imported/available
         # Rollback database operations
         db.rollback()
         

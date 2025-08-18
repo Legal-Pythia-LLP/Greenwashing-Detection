@@ -1,8 +1,6 @@
 from langchain_openai import AzureOpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from app.config import AZURE_OPENAI_ENDPOINT_2, AZURE_OPENAI_API_KEY_2
-
-
+from app.config import AZURE_OPENAI_ENDPOINT_2, AZURE_OPENAI_API_KEY_2, GOOGLE_API_KEY
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 
@@ -15,7 +13,10 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 #     chunk_size=100
 # )
 
-embedding_model = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-exp-03-07")
+embedding_model = GoogleGenerativeAIEmbeddings(
+    model="models/gemini-embedding-exp-03-07", 
+    google_api_key=GOOGLE_API_KEY
+)
 
 
 

@@ -24,10 +24,12 @@ UPLOAD_DIR = BASE_PATH / "uploads"   # Directory for uploaded files
 REPORT_DIR = BASE_PATH / "reports"   # Directory for report files
 DB_PATH = BASE_PATH / "data/reports.db"  # SQLite database path
 COMPANIES_PATH = BASE_PATH / "data_files/companies.csv"    # Company whitelist CSV file path
+VECTOR_STORE_DIR = BASE_PATH / "data/vector_stores"  # Directory for vector store persistence
 
 # Ensure directories exist
 REPORT_DIR.mkdir(parents=True, exist_ok=True)
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+VECTOR_STORE_DIR.mkdir(parents=True, exist_ok=True)
 
 # Load valid companies
 if COMPANIES_PATH.exists():

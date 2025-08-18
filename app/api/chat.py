@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from app.models import ChatBaseMessage, ChatMessage
 from app.core.esg_analysis import agent_executors
-from app.core.store import save_conversation, get_conversation
+from app.core.store import save_conversation, get_conversation, get_session, load_vector_store
 from app.db import get_db
 
 router = APIRouter()
@@ -38,13 +38,45 @@ async def chat_with_agent(
         timestamp=datetime.now()
     ))
 
-    # Get agent
+    # Get agent and session
     print(f"[AGENT] Looking up agent for session: {session_id}")
+    session = get_session(session_id, db)
     agent = agent_executors.get(session_id)
-    if not agent:
-        print(f"[AGENT ERROR] No agent found for session: {session_id}")
+    
+    print(f"[AGENT DEBUG] Session lookup result: {'found' if session else 'not found'}")
+    print(f"[AGENT DEBUG] Agent lookup result: {'found' if agent else 'not found'}")
+    print(f"[AGENT DEBUG] Current active sessions: {list(agent_executors.keys())}")
+    
+    # Recreate agent if session exists but agent is missing
+    if session and not agent and session.get("agent_executor"):
+        print(f"[AGENT] Recreating agent for existing session: {session_id}")
+        print(f"[AGENT DEBUG] Session data keys: {session.keys()}")
+        vector_store = load_vector_store(session_id)
+        print(f"[VECTOR STORE DEBUG] Vector store {'found' if vector_store else 'not found'}")
+        if vector_store:
+            from app.core.esg_analysis import create_esg_agent
+            agent = create_esg_agent(session_id, vector_store, session.get("company_name", "unknown"))
+            agent_executors[session_id] = agent
+            print(f"[AGENT DEBUG] Agent successfully recreated for session: {session_id}")
+    
+    if not agent or not session:
+        print(f"[AGENT ERROR] No valid session found for: {session_id}")
         print(f"[AGENT DEBUG] Current active sessions: {list(agent_executors.keys())}")
-        raise HTTPException(status_code=400, detail="No analysis session found")
+        raise HTTPException(
+            status_code=400, 
+            detail="No active analysis session found. Please upload a document first."
+        )
+    
+    # Load vector store for RAG
+    print(f"[VECTOR STORE] Loading vector store for session: {session_id}")
+    vector_store = load_vector_store(session_id)
+    if not vector_store:
+        print(f"[VECTOR STORE ERROR] No vector store found for session: {session_id}")
+        raise HTTPException(
+            status_code=400,
+            detail="No vector store found for this session. Please upload a document first."
+        )
+    # Pass vector_store as part of the input instead of setting it directly
     print(f"[AGENT] Found active agent for session")
 
     async def generate_response():
@@ -66,7 +98,13 @@ async def chat_with_agent(
             )
             
             print(f"[AGENT] Running prompt (truncated):\n{full_prompt[:200]}...")
-            response = agent.run(full_prompt)
+            # Include vector store info in the prompt
+            enhanced_prompt = (
+                f"{full_prompt}\n\n"
+                f"Document Context: Use the vector store with session ID {session_id} "
+                f"for document retrieval and analysis."
+            )
+            response = agent.run(enhanced_prompt)
             print(f"[AGENT] Raw response (truncated):\n{response[:200]}...")
             
             if not response or len(response) < 10:  # Fallback if response is too short

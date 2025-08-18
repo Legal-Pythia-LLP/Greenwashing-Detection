@@ -14,6 +14,13 @@ class ChatMessage(BaseModel):
         data['timestamp'] = self.timestamp.isoformat()
         return data
 
+    @classmethod
+    def from_dict(cls, data):
+        if isinstance(data, str):
+            import json
+            data = json.loads(data)
+        return cls(**data)
+
 # Defines the base structure for user-system conversations
 class ChatBaseMessage(BaseModel):
     message: str
@@ -21,6 +28,12 @@ class ChatBaseMessage(BaseModel):
     conversation_id: Optional[str] = None
     user_id: Optional[str] = None
     message_history: List[ChatMessage] = []
+
+    @classmethod
+    def parse_messages(cls, messages_str: str) -> List[ChatMessage]:
+        import json
+        messages = json.loads(messages_str)
+        return [ChatMessage.from_dict(msg) for msg in messages]
 
 # Database model for storing conversations
 class Conversation(Base):
