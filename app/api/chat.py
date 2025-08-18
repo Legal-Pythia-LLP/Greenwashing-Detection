@@ -14,32 +14,45 @@ async def get_full_conversation(
     session_id: str,
     db: Session = Depends(get_db)
 ) -> JSONResponse:
-    """Get full conversation history for a session"""
-    print(f"\n===== GET CONVERSATION REQUEST =====\n"
-          f"Session: {session_id}\n"
-          f"=============================")
+    """
+    Get full conversation history for a session.
+    - Filter out system messages
+    - If no user/assistant messages, automatically add a welcome assistant message
+    """
+    print(f"\n===== GET CONVERSATION REQUEST =====\nSession: {session_id}\n=============================")
     
     conversation = get_conversation(db, session_id)
-    print(f"[DB] Loaded {len(conversation)} history messages")
+    print(f"[DB] Loaded {len(conversation)} total messages")
     
-    if not conversation:
-        print(f"[DB WARNING] No conversation found for session: {session_id}")
-        raise HTTPException(
-            status_code=404,
-            detail="No conversation history found"
-        )
+    # Keep only user and assistant messages
+    messages = [
+        {
+            "sender": msg.sender,
+            "content": msg.content,
+            "timestamp": msg.timestamp.isoformat()
+        }
+        for msg in conversation if msg.sender in ("user", "assistant")
+    ]
+    
+    # Get company name from session if available
+    session_data = get_session(session_id, db)
+    company_name = session_data.get("company_name") if session_data else "the company"
+    
+    # If there are no messages, add an assistant welcome message
+    if not messages:
+        welcome_msg = {
+            "sender": "assistant",
+            "content": f"Hello, I am the ESG smart assistant for {company_name}. I can help you analyze ESG risks and greenwashing issues.",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+        messages.append(welcome_msg)
+        print("[DB] Added assistant welcome message for empty session")
     
     return JSONResponse({
         "session_id": session_id,
-        "messages": [
-            {
-                "sender": msg.sender,
-                "content": msg.content,
-                "timestamp": msg.timestamp.isoformat()
-            }
-            for msg in conversation
-        ]
+        "messages": messages
     })
+
 
 @router.post("/chat")
 async def chat_with_agent(
@@ -84,7 +97,6 @@ async def chat_with_agent(
         print(f"[AGENT] Attempting to recreate agent for session: {session_id}")
         print(f"[AGENT DEBUG] Session data keys: {session.keys()}")
         
-        # Check if we have required fields to recreate agent
         required_fields = ["vector_store_path", "company_name"]
         missing_fields = [field for field in required_fields if field not in session]
         
@@ -117,8 +129,6 @@ async def chat_with_agent(
             detail="No active analysis session found. Please upload a document first."
         )
     
-    # Load vector store for RAG
-    print(f"[VECTOR STORE] Loading vector store for session: {session_id}")
     vector_store = load_vector_store(session_id)
     if not vector_store:
         print(f"[VECTOR STORE ERROR] No vector store found for session: {session_id}")
@@ -126,39 +136,25 @@ async def chat_with_agent(
             status_code=400,
             detail="No vector store found for this session. Please upload a document first."
         )
-    # Pass vector_store as part of the input instead of setting it directly
     print(f"[AGENT] Found active agent for session")
 
     async def generate_response():
         try:
             print(f"[RESPONSE] Generating response with {len(conversation)} context messages")
-            # Include conversation history with more context
-            context = "\n".join([
-                f"{msg.sender}: {msg.content}" 
-                for msg in conversation[-6:]  # Last 3 exchanges
-            ])
-            print(f"[RESPONSE] Context:\n{context[:200]}...")
-            
+            context = "\n".join([f"{msg.sender}: {msg.content}" for msg in conversation[-6:]])
             full_prompt = (
-                "You are an ESG analysis assistant. Provide detailed, specific answers based on the conversation history. "
-                "When asked about companies, check if we have analysis data. For general questions, provide thorough explanations.\n\n"
+                "You are an ESG analysis assistant. Provide detailed, specific answers based on the conversation history.\n\n"
                 f"Conversation History:\n{context}\n\n"
                 f"User Question: {user_message}\n\n"
                 "Assistant Response:"
             )
-            
-            print(f"[AGENT] Running prompt (truncated):\n{full_prompt[:200]}...")
-            # Include vector store info in the prompt
             enhanced_prompt = (
                 f"{full_prompt}\n\n"
-                f"Document Context: Use the vector store with session ID {session_id} "
-                f"for document retrieval and analysis."
+                f"Document Context: Use the vector store with session ID {session_id} for document retrieval and analysis."
             )
             response = agent.run(enhanced_prompt)
-            print(f"[AGENT] Raw response (truncated):\n{response[:200]}...")
             
-            if not response or len(response) < 10:  # Fallback if response is too short
-                print("[AGENT WARNING] Response too short, using fallback")
+            if not response or len(response) < 10:
                 response = (
                     "I can provide detailed analysis on:\n"
                     "- Specific company ESG reports\n"
@@ -168,34 +164,17 @@ async def chat_with_agent(
                     "Could you clarify or provide more details about your request?"
                 )
             
-            # Add assistant response to history
             assistant_msg = ChatMessage(
                 content=response,
                 sender="assistant",
                 timestamp=datetime.now()
             )
             conversation.append(assistant_msg)
-            print(f"[DB] Saving conversation with {len(conversation)} messages")
-            try:
-                save_conversation(db, conversation_id, user_id, conversation)
-                print("[DB] Conversation saved successfully")
-            except Exception as e:
-                print(f"[DB ERROR] Failed to save conversation: {str(e)}")
-                raise
+            save_conversation(db, conversation_id, user_id, conversation)
             
             for chunk in response.split():
                 yield chunk + " "
         except Exception as e:
             yield f"Error: {str(e)}"
 
-    print("[RESPONSE] Returning streaming response")
-    try:
-        return StreamingResponse(
-            generate_response(),
-            media_type="text/plain"
-        )
-    except Exception as e:
-        print(f"[RESPONSE ERROR] Streaming failed: {str(e)}")
-        raise
-    finally:
-        print("===== CHAT REQUEST END =====")
+    return StreamingResponse(generate_response(), media_type="text/plain")
