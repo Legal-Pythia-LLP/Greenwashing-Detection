@@ -1,6 +1,6 @@
-""" 
-Optimized Workflow Validation System
-Coordinates and manages different validation tools, providing better error handling, parallel processing, and result aggregation
+"""
+Optimized workflow validation system
+Coordinates and manages different validation tools, providing better error handling, parallel processing and result aggregation
 """
 
 import asyncio
@@ -43,7 +43,7 @@ class ValidationResult:
 
 
 class WorkflowValidator:
-    """Workflow Validator - coordinates and manages multiple validation tools"""
+    """Workflow validator - coordinates and manages multiple validation tools"""
     
     def __init__(self, company_name: str, vector_store=None):
         self.company_name = company_name
@@ -62,11 +62,11 @@ class WorkflowValidator:
     
     async def run_validation_workflow(self, document_analysis: str, extracted_metrics: str = None) -> Dict[str, Any]:
         """
-        Run the full validation workflow
+        Run complete validation workflow
         
         Args:
-            document_analysis: Results from document analysis
-            extracted_metrics: Extracted metric data
+            document_analysis: Document analysis results
+            extracted_metrics: Extracted metrics data
             
         Returns:
             Dictionary containing all validation results
@@ -104,7 +104,7 @@ class WorkflowValidator:
         
         try:
             if not extracted_metrics:
-                # If metrics are not provided, extract from document analysis
+                # If no metrics provided, extract from document analysis
                 extracted_metrics = await self._extract_metrics_from_analysis()
             
             result = await self._run_tool_async(
@@ -133,7 +133,7 @@ class WorkflowValidator:
         start_time = time.time()
         
         try:
-            # Extract claims to be validated
+            # Extract claims that need validation
             claims = await self._extract_claims_from_analysis(document_analysis)
             
             result = await self._run_tool_async(
@@ -350,7 +350,7 @@ class WorkflowValidator:
 
 
 class ValidationOrchestrator:
-    """Validation Orchestrator - advanced workflow management"""
+    """Validation orchestrator - advanced workflow management"""
     
     def __init__(self, company_name: str, vector_store=None):
         self.validator = WorkflowValidator(company_name, vector_store)
@@ -359,12 +359,12 @@ class ValidationOrchestrator:
     async def run_comprehensive_validation(self, document_analysis: str, extracted_metrics: str = None) -> Dict[str, Any]:
         """Run comprehensive validation"""
         try:
-            # Run base validation
+            # Run basic validation
             workflow_results = await self.validator.run_validation_workflow(
                 document_analysis, extracted_metrics
             )
             
-            # Add enhanced analysis
+            # Add advanced analysis
             enhanced_results = await self._enhance_results(workflow_results, document_analysis)
             
             return enhanced_results
@@ -469,7 +469,6 @@ class ValidationOrchestrator:
         return recommendations
 
 
-# Usage example
 async def run_optimized_validation_workflow(
     company_name: str, 
     document_analysis: str, 
@@ -480,10 +479,10 @@ async def run_optimized_validation_workflow(
     Run optimized validation workflow
     
     Args:
-        company_name: Name of the company
-        document_analysis: Document analysis results
+        company_name: Company name
+        document_analysis: Document analysis results  
         vector_store: Vector store
-        extracted_metrics: Extracted metric data
+        extracted_metrics: Extracted metrics data
         
     Returns:
         Dictionary containing all validation results

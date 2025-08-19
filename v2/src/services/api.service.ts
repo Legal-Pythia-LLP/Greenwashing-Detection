@@ -1,15 +1,17 @@
 import axios from "axios";
+import { API_CONFIG } from "@/config/api.config";
 
-// Create an axios instance connected to the backend API
+// Create an axios instance, connecting to the backend API
 export const api = axios.create({
-  baseURL: "http://127.0.0.1:8000/v1",
-  timeout: 0, // Disable timeout, allow requests to wait indefinitely
+  baseURL: API_CONFIG.BASE_URL,
+  timeout: API_CONFIG.TIMEOUT,
 });
 
 export class APIService {
   // File upload API
   static async uploadFile(formData: FormData) {
-    // Accept full FormData object, can include multiple fields
+    // Now accepts the complete FormData object, which can include multiple fields
+
     try {
       console.log(
         "Attempting to upload to:",
@@ -32,11 +34,11 @@ export class APIService {
         data: error.response?.data,
       });
 
-      // Provide more user-friendly error messages
+      // Provide a friendlier error message
       if (error.code === "ECONNABORTED") {
-        throw new Error("Upload timed out, please check your network or try again later");
+        throw new Error("Upload timed out, please check your network connection or try again later");
       } else if (error.response?.status === 404) {
-        throw new Error("API endpoint does not exist, please check backend configuration");
+        throw new Error("API endpoint not found, please check backend service configuration");
       } else if (error.response?.status >= 500) {
         throw new Error("Internal server error, please try again later");
       } else {
@@ -104,6 +106,28 @@ export class APIService {
         },
         companies: []
       };
+    }
+  }
+
+  // Get risk trends data API
+  static async getRiskTrends() {
+    try {
+      const response = await api.get("/dashboard/trends");
+      return response.data;
+    } catch (error) {
+      console.error("Risk trends error:", error);
+      throw error;
+    }
+  }
+
+  // Get conversation history API
+  static async getConversation(session_id: string) {
+    try {
+      const response = await api.get(`/get_conversation/${session_id}`);
+      return response.data;
+    } catch (error) {
+      console.error("Get conversation error:", error);
+      throw error;
     }
   }
 }

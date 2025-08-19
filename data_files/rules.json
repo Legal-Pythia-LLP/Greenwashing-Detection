@@ -1,0 +1,285 @@
+[
+  {
+    "name": ["Targets", "Net Zero / Carbon Neutral"],
+    "rule": { "type": "regex", "regex": "\\b(net\\s*zero|carbon\\s*neutral|climate\\s*neutral)\\b", "ignore_case": true },
+    "negations": [],
+    "whitelist": ["PAS 2060", "SBTi"],
+    "score": 4,
+    "source": "GHG/SBTi",
+    "source_ref": "Absolute target terms; SBTi Net-Zero framing",
+    "note": "Absolute target phrasing; verify scope, pathway and timeline.",
+    "id": 101
+  },
+  {
+    "name": ["Targets", "Missing Year/Baseline"],
+    "rule": { "type": "regex", "regex": "\\b(aim|target|commit|plan|intend|aspire)s?\\b(?!.*\\b(20\\d{2}|\\d{4}|baseline|reference year|base\\s*year)\\b)", "ignore_case": true },
+    "negations": [],
+    "whitelist": [],
+    "score": 5,
+    "source": "SBTi",
+    "source_ref": "Target description requires base year/target year/coverage",
+    "note": "Target-like phrasing but missing target year or baseline.",
+    "id": 102
+  },
+  {
+    "name": ["Targets", "Percent by Year (Positive signal)"],
+    "rule": { "type": "regex", "regex": "\\b(reduce|cut|decrease)\\s+\\d+\\s*%\\s+(by|before)\\s+20\\d{2}\\b", "ignore_case": true },
+    "negations": [],
+    "whitelist": [],
+    "score": 1,
+    "source": "SBTi",
+    "source_ref": "Near/long-term target phrasing",
+    "note": "Compliant target phrasing (positive signal, low weight).",
+    "id": 103
+  },
+
+  {
+    "name": ["Scope Coverage", "Scope 3 Omission / Deferral"],
+    "rule": { "type": "regex", "regex": "\\bscope\\s*3\\b\\s*(excluded|not (material|included)|to be assessed|data (not|un)available|limited coverage|future|later)", "ignore_case": true },
+    "negations": [],
+    "whitelist": ["PCAF"],
+    "score": 5,
+    "source": "SBTi/GHG",
+    "source_ref": "Complete S3 inventory & boundary; Scope 3 Standard",
+    "note": "Explicitly excludes or defers Scope 3 coverage/disclosure.",
+    "id": 201
+  },
+  {
+    "name": ["Scope Coverage", "Only S1/S2"],
+    "rule": { "type": "regex", "regex": "\\bonly\\b.*\\b(scope\\s*1|scope\\s*2)\\b|\\b(scope\\s*3)\\b\\s*(later|future|out of scope)", "ignore_case": true },
+    "negations": [],
+    "whitelist": [],
+    "score": 4,
+    "source": "GHG/SBTi",
+    "source_ref": "Scopes definition & SBTi coverage expectations",
+    "note": "Reports only Scope 1/2 or defers Scope 3.",
+    "id": 202
+  },
+
+  {
+    "name": ["Offsets & Credits", "Offsets Mentioned"],
+    "rule": { "type": "keyword", "keywords": ["offset", "offsets", "carbon credit", "carbon credits", "REDD", "REDD+", "nature-based credit"], "ignore_case": true },
+    "negations": [],
+    "whitelist": ["ICROA", "Gold Standard", "Verra", "CDM", "CORSIA"],
+    "score": 3,
+    "source": "SBTi",
+    "source_ref": "Offsets must be disclosed separately from target progress",
+    "note": "Mentions offsets/carbon credits (neutral flag).",
+    "id": 301
+  },
+  {
+    "name": ["Offsets & Credits", "Neutral via Offsets (No 3rd-party)"],
+    "rule": { "type": "regex", "regex": "\\b(carbon|climate)\\s*neutral\\b.*\\b(via|through|using)\\b.*\\b(offset|credit)s?(?!.*\\b(Verra|Gold Standard|ICROA|third[- ]party|independent)\\b)", "ignore_case": true },
+    "negations": [],
+    "whitelist": ["PAS 2060"],
+    "score": 5,
+    "source": "SBTi",
+    "source_ref": "Offsets separate; credibility/verification",
+    "note": "Claims neutrality via offsets without independent third-party/standard.",
+    "id": 302
+  },
+  {
+    "name": ["Offsets & Credits", "Avoided/Enabled Emissions Claim"],
+    "rule": { "type": "regex", "regex": "\\b(avoided|enabled)\\s+emissions\\b(?!.*\\b(separate|separately|not counted|outside (the )?inventory)\\b)", "ignore_case": true },
+    "negations": [],
+    "whitelist": ["methodology", "boundary", "third-party assurance"],
+    "score": 4,
+    "source": "SBTi",
+    "source_ref": "Avoided emissions must be disclosed separately",
+    "note": "Avoided/enabled emissions should be disclosed separately from inventory/progress.",
+    "id": 303
+  },
+
+  {
+    "name": ["Energy Accounting", "RECs / GOs"],
+    "rule": { "type": "keyword", "keywords": ["REC", "RECs", "guarantee of origin", "guarantees of origin", "GO", "GOs", "PPA", "power purchase agreement"], "ignore_case": true },
+    "negations": [],
+    "whitelist": ["RE100"],
+    "score": 2,
+    "source": "GHG",
+    "source_ref": "Scope 2 instruments & terminology",
+    "note": "Certificates/contracts terminology (neutral flag).",
+    "id": 401
+  },
+  {
+    "name": ["Energy Accounting", "Market vs Location Opaque"],
+    "rule": { "type": "regex", "regex": "\\b(renewable|green)\\s*electricity\\b(?!.*\\b(market[- ]based|location[- ]based|dual reporting)\\b)", "ignore_case": true },
+    "negations": [],
+    "whitelist": ["market-based", "location-based", "dual reporting"],
+    "score": 4,
+    "source": "GHG",
+    "source_ref": "Scope 2 dual reporting requirement",
+    "note": "Mentions renewable electricity without market- vs location-based basis/dual reporting.",
+    "id": 402
+  },
+  {
+    "name": ["Energy Accounting", "Scope 2 Quality Criteria Omitted"],
+    "rule": { "type": "regex", "regex": "\\b(renewable energy certificates?|RECs?|GOs?|supplier-specific|residual mix)\\b(?!.*\\b(quality criteria|tracked|retired|canceled|same market)\\b)", "ignore_case": true },
+    "negations": [],
+    "whitelist": ["quality criteria", "tracked", "retired", "canceled", "same market"],
+    "score": 3,
+    "source": "GHG",
+    "source_ref": "Scope 2 Quality Criteria for market-based method",
+    "note": "Mentions instruments/method but misses required quality criteria.",
+    "id": 403
+  },
+
+  {
+    "name": ["Metrics", "Intensity without Absolute"],
+    "rule": { "type": "regex", "regex": "\\b(intensity|per\\s*(unit|revenue|turnover|\\w+))\\b(?!.*\\b(absolute|total)\\b)", "ignore_case": true },
+    "negations": ["absolute emissions", "total emissions"],
+    "whitelist": [],
+    "score": 4,
+    "source": "GHG",
+    "source_ref": "Absolute vs intensity reporting",
+    "note": "Intensity metrics without absolute totals.",
+    "id": 501
+  },
+  {
+    "name": ["Metrics", "Selective Baseline"],
+    "rule": { "type": "regex", "regex": "\\b(compared\\s*to|vs\\.|versus|against)\\b(?!.*\\b(20\\d{2}|\\d{4}|baseline|reference year|base\\s*year)\\b)", "ignore_case": true },
+    "negations": [],
+    "whitelist": [],
+    "score": 3,
+    "source": "SBTi",
+    "source_ref": "Baseline clarity for target progress",
+    "note": "Comparison stated without baseline year specified.",
+    "id": 502
+  },
+  {
+    "name": ["Metrics", "Data Limitations / Method Update"],
+    "rule": { "type": "regex", "regex": "\\b(data (limitations?|gaps?)|to be assessed|improve(d|ment) methodology|estimate(d|s))\\b", "ignore_case": true },
+    "negations": [],
+    "whitelist": ["assurance", "third-party"],
+    "score": 2,
+    "source": "SBTi",
+    "source_ref": "Disclosure of data limitations & methodology updates",
+    "note": "Signals data/method limitations—check impact on comparability/boundary.",
+    "id": 503
+  },
+
+  {
+    "name": ["Assurance", "No/Low Assurance Clarity"],
+    "rule": { "type": "regex", "regex": "\\b(assurance|verified|limited assurance|reasonable assurance)\\b(?!.*\\b(third[- ]party|independent|ISAE ?3000|AA1000)\\b)", "ignore_case": true },
+    "negations": [],
+    "whitelist": ["ISAE 3000", "AA1000", "third-party", "independent"],
+    "score": 3,
+    "source": "SBTi",
+    "source_ref": "Inventory verification/assurance examples",
+    "note": "Assurance wording without independent third-party/standard.",
+    "id": 601
+  },
+
+  {
+    "name": ["Governance", "Board Oversight Name-drop"],
+    "rule": { "type": "regex", "regex": "\\b(board|committee|oversight)\\b(?!.*\\b(climate|sustainability|ESG)\\b)", "ignore_case": true },
+    "negations": [],
+    "whitelist": ["TCFD", "ISSB S2"],
+    "score": 2,
+    "source": "TCFD",
+    "source_ref": "Governance pillar—board oversight of climate",
+    "note": "Governance terms without explicit climate/ESG oversight linkage.",
+    "id": 701
+  },
+  {
+    "name": ["Strategy/Scenario", "TCFD Name-drop (No Scenario/Impacts)"],
+    "rule": { "type": "regex", "regex": "\\bTCFD\\b(?!.*\\b(scenario|1\\.5 ?°C|2 ?°C|stress test|financial impacts?)\\b)", "ignore_case": true },
+    "negations": [],
+    "whitelist": ["scenario analysis", "1.5°C", "2°C"],
+    "score": 3,
+    "source": "TCFD",
+    "source_ref": "Strategy & Scenario analysis expectations",
+    "note": "Mentions TCFD but lacks scenario analysis or financial impacts.",
+    "id": 702
+  },
+
+  {
+    "name": ["EU Taxonomy", "Aligned/Eligible without KPI %"],
+    "rule": { "type": "regex", "regex": "\\b(taxonomy[- ]aligned|eligible)\\b(?!.*\\b(%|percent|share|revenue|turnover|capex|opex)\\b)", "ignore_case": true },
+    "negations": [],
+    "whitelist": ["EU Taxonomy"],
+    "score": 4,
+    "source": "EU Taxonomy",
+    "source_ref": "Art.8 turnover/CapEx/OpEx disclosure",
+    "note": "Mentions aligned/eligible but no KPI % by revenue/capex/opex.",
+    "id": 801
+  },
+  {
+    "name": ["Finance / Capex", "Capex Alignment Missing"],
+    "rule": { "type": "regex", "regex": "\\b(capex|capital expenditure)\\b(?!.*\\b(aligned|taxonomy|transition plan)\\b)", "ignore_case": true },
+    "negations": [],
+    "whitelist": ["EU Taxonomy", "transition plan"],
+    "score": 3,
+    "source": "SBTi/EU",
+    "source_ref": "Transition plan & financial indicators / Taxonomy KPIs",
+    "note": "Mentions Capex with no transition alignment/taxonomy linkage.",
+    "id": 802
+  },
+
+  {
+    "name": ["Language", "Hedging Verbs (Aspirational)"],
+    "rule": { "type": "keyword", "keywords": ["aim", "aspire", "seek to", "work towards", "plan to", "hope to"], "ignore_case": true },
+    "negations": ["will reduce by", "reduced by", "achieved"],
+    "whitelist": [],
+    "score": 2,
+    "source": "Ong2025",
+    "source_ref": "Aspect-Action: indeterminate/aspirational verbs",
+    "note": "Aspirational/hedging verbs.",
+    "id": 901
+  },
+  {
+    "name": ["Language", "Absolute Claims"],
+    "rule": { "type": "regex", "regex": "\\b(100%|fully|completely)\\b\\s*(renewable|green|decarboni[sz]ed|zero emissions?)", "ignore_case": true },
+    "negations": [],
+    "whitelist": ["assurance", "methodology", "audit"],
+    "score": 3,
+    "source": "Luo2024",
+    "source_ref": "Exaggeration lexicon patterns",
+    "note": "Absolute claims that should be backed by evidence/assurance.",
+    "id": 902
+  },
+
+  {
+    "name": ["Aspect-Action", "Aspect without Action"],
+    "rule": { "type": "regex", "regex": "\\b(emissions?|energy|electricity|water|waste|deforestation|biodiversity|supply chain)\\b(?!.*\\b(reduce|cut|installed|invested|implemented|completed|audit(ed)?)\\b)", "ignore_case": true },
+    "negations": [],
+    "whitelist": [],
+    "score": 4,
+    "source": "Ong2025",
+    "source_ref": "Aspect-Action completeness",
+    "note": "Aspect mentioned without concrete action—likely hollow claim.",
+    "id": 1001
+  },
+  {
+    "name": ["Supply Chain", "Supplier Engagement Vague"],
+    "rule": { "type": "regex", "regex": "\\b(engage|engaging|engagement)\\b.*\\b(suppliers?|vendors?)\\b(?!.*\\b(%|percent|\\d+%|by\\s*20\\d{2}|within\\s*\\d+\\s*years)\\b)", "ignore_case": true },
+    "negations": [],
+    "whitelist": ["SBTi"],
+    "score": 3,
+    "source": "SBTi",
+    "source_ref": "Supplier engagement targets need % coverage & timeframe",
+    "note": "Supplier engagement without coverage % and timeline.",
+    "id": 1002
+  },
+
+  {
+    "name": ["Nature/FLAG", "Nature Positive / Deforestation Vague"],
+    "rule": { "type": "regex", "regex": "\\b(nature[- ]positive|zero[- ]deforestation|deforestation[- ]free)\\b(?!.*\\b(metric|boundary|FLAG|science[- ]based|traceability|certification)\\b)", "ignore_case": true },
+    "negations": [],
+    "whitelist": ["FLAG", "SBTN", "traceability", "certification"],
+    "score": 3,
+    "source": "SBTi",
+    "source_ref": "FLAG targets & land sector guidance expectations",
+    "note": "Nature/deforestation claims without metrics or methodology.",
+    "id": 1101
+  },
+
+
+  {
+    "name":["Test","Sentinel"],
+    "rule":{"type":"regex","regex":"ZZZTESTFLAG","ignore_case":true},
+    "score":9,
+    "id":999001
+  }
+
+]

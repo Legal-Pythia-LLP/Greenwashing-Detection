@@ -87,7 +87,7 @@ export function EnhancedCompanyReport({ company }: EnhancedCompanyReportProps) {
                   </div>
                   
                   <div>
-                    <p className="font-medium mb-1">Analysis Notes:</p>
+                    <p className="font-medium mb-1">Analysis:</p>
                     <p className="text-muted-foreground">{item.why}</p>
                   </div>
 
@@ -121,7 +121,7 @@ export function EnhancedCompanyReport({ company }: EnhancedCompanyReportProps) {
               ))}
             </div>
           )) || (
-            <p className="text-muted-foreground">No detailed evidence data available</p>
+            <p className="text-muted-foreground">No detailed evidence available</p>
           )}
         </CardContent>
       </Card>
@@ -188,8 +188,8 @@ export function EnhancedCompanyReport({ company }: EnhancedCompanyReportProps) {
             <div className="space-y-2">
               <h4 className="font-semibold text-primary">Investors</h4>
               <ul className="text-sm space-y-1 text-muted-foreground">
-                <li>• Request specific quantitative targets from the company</li>
-                <li>• Focus on third-party certifications and verification reports</li>
+                <li>• Request more specific quantitative targets from the company</li>
+                <li>• Pay attention to third-party certifications and verification reports</li>
                 <li>• Establish ESG performance monitoring mechanisms</li>
               </ul>
             </div>
@@ -198,22 +198,22 @@ export function EnhancedCompanyReport({ company }: EnhancedCompanyReportProps) {
               <ul className="text-sm space-y-1 text-muted-foreground">
                 <li>• Strengthen disclosure requirements</li>
                 <li>• Establish penalties for greenwashing behavior</li>
-                <li>• Promote industry standardization processes</li>
+                <li>• Promote industry standardization</li>
               </ul>
             </div>
             <div className="space-y-2">
-              <h4 className="font-semibold text-primary">Corporate Management</h4>
+              <h4 className="font-semibold text-primary">Company Management</h4>
               <ul className="text-sm space-y-1 text-muted-foreground">
-                <li>• Implement transparent ESG data management systems</li>
+                <li>• Build a transparent ESG data management system</li>
                 <li>• Conduct regular third-party audits</li>
-                <li>• Avoid vague or misleading statements</li>
+                <li>• Avoid ambiguous or misleading statements</li>
               </ul>
             </div>
             <div className="space-y-2">
               <h4 className="font-semibold text-primary">Analysts</h4>
               <ul className="text-sm space-y-1 text-muted-foreground">
                 <li>• Focus on data verifiability</li>
-                <li>• Assess feasibility of ESG targets</li>
+                <li>• Assess the realism of ESG targets</li>
                 <li>• Track long-term performance</li>
               </ul>
             </div>
@@ -225,7 +225,7 @@ export function EnhancedCompanyReport({ company }: EnhancedCompanyReportProps) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Risk Assessment & Concerns</CardTitle>
+            <CardTitle>Risk Assessment & Key Considerations</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -237,9 +237,9 @@ export function EnhancedCompanyReport({ company }: EnhancedCompanyReportProps) {
               </Alert>
               <div className="text-sm space-y-2 text-muted-foreground">
                 <p>• Lack of specific quantitative metrics may raise investor concerns</p>
-                <p>• Vague statements increase regulatory compliance risk</p>
+                <p>• Ambiguous statements increase regulatory compliance risk</p>
                 <p>• Insufficient third-party verification affects credibility</p>
-                <p>• Need to improve data transparency and traceability</p>
+                <p>• Need to enhance data transparency and traceability</p>
               </div>
             </div>
           </CardContent>

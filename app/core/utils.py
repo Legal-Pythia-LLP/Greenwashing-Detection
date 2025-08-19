@@ -80,12 +80,12 @@ def is_esg_related_llm(text: str) -> bool:
 
 def is_article_about_company(text: str, company_name: str, aliases: list) -> bool:
     prompt = f"""
-    Determine whether the following article is directly related to the company "{company_name}" or its aliases {aliases}.
+    Determine if the following article is directly related to company "{company_name}" or its aliases {aliases}.
 
     Article content:
     {text[:1200]}
 
-    Please only answer YES or NO.
+    Please answer only YES or NO.
     """
     try:
         response = llm.invoke([HumanMessage(content=prompt)])
@@ -94,13 +94,25 @@ def is_article_about_company(text: str, company_name: str, aliases: list) -> boo
         print(f"[LLM error when checking article relevance]: {e}")
         return False
 
+async def translate_text(text: str, target_lang: str) -> str:
+    """
+    use llm to translate
+    target_lang: such as "Chinese", "Spanish", "German"
+    """
+    prompt = f"Translate the following ESG analysis report into {target_lang}:\n\n{text}"
+    try:
+        response = llm.invoke([HumanMessage(content=prompt)])
+        return response.content.strip()
+    except Exception as e:
+        print(f"[LLM translation failed]: {e}")
+        return text
 
 def search_and_filter_news(company_name: str, max_articles: int = 5) -> Tuple[List[str], List[str]]:
     """
-    Search for relevant news, filter content related to the company and ESG, and return up to max_articles
+    Search relevant news, filter for company and ESG related content, return up to max_articles
     """
     aliases = generate_company_aliases(company_name)
-    print(f"[DEBUG] Searching news using the following aliases: {aliases}")
+    print(f"[DEBUG] Searching news with aliases: {aliases}")
 
     bbc_articles, cnn_articles = {}, {}
     for alias in aliases:
@@ -118,16 +130,18 @@ def search_and_filter_news(company_name: str, max_articles: int = 5) -> Tuple[Li
             print(f"[CNN error with alias '{alias}']: {e}")
 
     all_articles = list((bbc_articles or {}).items()) + list((cnn_articles or {}).items())
-    print(f"[DEBUG] Number of BBC articles fetched: {len(bbc_articles)}")
+    print(f"[DEBUG] Fetched BBC articles count: {len(bbc_articles)}")
     for title in bbc_articles:
         print(f"  [BBC] {title}")
 
-    print(f"[DEBUG] Number of CNN articles fetched: {len(cnn_articles)}")
+    print(f"[DEBUG] Fetched CNN articles count: {len(cnn_articles)}")
     for title in cnn_articles:
         print(f"  [CNN] {title}")
     filtered_articles = []
 
-    for title, file_path in all_articles[:100]:  # Evaluate up to the first 100 articles
+    
+
+    for title, file_path in all_articles[:100]:  # Evaluate at most first 100 articles
         try:
             loader = UnstructuredHTMLLoader(file_path)
             docs = loader.load()
@@ -136,18 +150,17 @@ def search_and_filter_news(company_name: str, max_articles: int = 5) -> Tuple[Li
                 is_esg = is_esg_related_llm(doc.page_content)
 
                 if is_company and is_esg:
-                    print(f"[Keep] {title} 👉 Company match: YES, ESG-related: YES")
+                    print(f"[✅ Keep] {title} 👉 Company match: YES, ESG related: YES")
                     filtered_articles.append((doc.page_content, title))
                 else:
-                    print(f"[Exclude] {title} 👉 Company match: {'YES' if is_company else 'NO'}, ESG-related: {'YES' if is_esg else 'NO'}")
+                    print(f"[❌ Remove] {title} 👉 Company match: {'YES' if is_company else 'NO'}, ESG related: {'YES' if is_esg else 'NO'}")
 
         except Exception as e:
             print(f"[Error loading article: {title}]: {e}")
 
-    # Only take the top N articles for subsequent analysis
+    # Only take first N articles for further analysis
     top_articles = filtered_articles[:max_articles]
     news_content = [item[0] for item in top_articles]
     used_titles = [item[1] for item in top_articles]
 
     return news_content, used_titles
-

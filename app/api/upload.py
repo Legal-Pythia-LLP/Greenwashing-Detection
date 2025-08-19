@@ -3,11 +3,13 @@ from typing import Annotated, Dict, Any, Optional
 from pathlib import Path
 import json
 from collections import defaultdict
+from app.core.store import session_store, save_session
+from app.core.esg_analysis import agent_executors
 
-# Global dictionary for storing analysis results
+    # Global dictionary to store analysis results
 analysis_results_by_session = defaultdict(dict)
-from app.core.utils import hash_file
-from app.core.document import process_pdf_document
+from app.core.utils import hash_file,translate_text
+from app.core.document import process_pdf_document, process_ocr_text
 from app.core.vector_store import embedding_model
 from app.config import UPLOAD_DIR, REPORT_DIR, VALID_UPLOAD_TYPES, VALID_COMPANIES
 from app.core.llm import llm
@@ -21,16 +23,24 @@ from langchain.schema import HumanMessage
 import uuid
 from PyPDF2 import PdfReader
 from langdetect import detect, DetectorFactory
+from PIL import Image
+import io
+from app.core.ocr_service import ocr_service
+from langchain_community.vectorstores import Chroma
+
+IMAGE_UPLOAD_TYPES = {
+    "image/png", "image/jpeg", "image/jpg", "image/webp", "image/tiff", "image/bmp"
+}
 
 def _get_main_risk_type(analysis_results: Dict[str, Any]) -> str:
     """Extract main risk type from analysis results"""
     breakdown = analysis_results.get("metrics", {}).get("breakdown", [])
     if not breakdown:
-        return "Unknown Type"
+        return "Unknown type"
     
-    # Find the type with the highest score
+    # Find the highest scoring type
     max_score = 0
-    main_type = "Unknown Type"
+    main_type = "Unknown type"
     for item in breakdown:
         score = item.get("value", 0)
         if isinstance(score, str):
@@ -40,7 +50,7 @@ def _get_main_risk_type(analysis_results: Dict[str, Any]) -> str:
                 score = 0
         if score > max_score:
             max_score = score
-            main_type = item.get("type", "Unknown Type")
+            main_type = item.get("type", "Unknown type")
     
     return main_type
 
@@ -57,38 +67,61 @@ async def upload_document(
 
     DetectorFactory.seed = 0  # Ensure consistent language detection results
 
-    # ✅ Generate a new session_id if not provided
+    # ✅ If no session_id provided, generate a new one
     if not session_id:
         session_id = f"s_{uuid.uuid4().hex[:16]}"
+        print(f"[SESSION DEBUG] Generated new session ID: {session_id}")
 
-    # Validate file type
-    if file.content_type not in VALID_UPLOAD_TYPES:
+    # --- Content-Type whitelist (PDF or images only) ---
+    if (file.content_type not in VALID_UPLOAD_TYPES) and (file.content_type not in IMAGE_UPLOAD_TYPES):
+        # DEBUG: print the received content-type to locate mismatches
+        print(f"[DEBUG] Rejected content-type: {file.content_type}")
         raise HTTPException(status_code=400, detail="Invalid content type")
-    
-    # Validate file size (limit 50MB)
-    if file.size > 50 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File too large. Maximum size is 50MB")
-    
-    # Validate filename
-    if not file.filename or not file.filename.lower().endswith('.pdf'):
-        raise HTTPException(status_code=400, detail="Invalid filename. Must be a PDF file")
 
-    # Save PDF file to reports directory with format {original_filename}_{timestamp}
+    # --- Read the file ONCE and reuse the buffer everywhere ---
+    # NOTE: UploadFile has no `.size` attribute by default; always read and check length.
     file_b = await file.read()
+    if len(file_b) > 50 * 1024 * 1024:  # 50MB
+        raise HTTPException(status_code=400, detail="File too large. Maximum size is 50MB")
+
+    # --- Filename / extension guards ---
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
+    lower_name = file.filename.lower()
+    is_pdf = lower_name.endswith(".pdf")
+    is_image = lower_name.endswith((".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".bmp"))
+    if not (is_pdf or is_image):
+        raise HTTPException(status_code=400, detail="Invalid filename. Must be a PDF or image file")
+
+    # Save PDF file to reports directory in {original_name}_{timestamp} format
+    # file_b = await file.read()
     file_hash = hash_file(file_b)
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     
-    # Generate safe filename (format: original_filename_analysis_time)
+    # Generate safe filename (format: original_name_analysis_time)
     from datetime import datetime
     import re
     
     original_name = Path(file.filename).stem  # Get filename without extension
-    safe_name = re.sub(r'[^\w\-_]', '_', original_name)  # Replace special characters
+    safe_name = re.sub(r'[^\w\-_]', '_', original_name)  # Replace special chars
     analysis_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-    file_path = REPORT_DIR / f"{safe_name}_{analysis_time}.pdf"
-    
+
+    # original image path (only used when the upload is an image)
+    suffix = Path(file.filename).suffix.lower()
+    file_path = REPORT_DIR / f"{safe_name}_{analysis_time}{suffix}"
+
+    # --- Build vector store (OCR for image, chunking for PDF) ---
+    # 1) Save original file
     with file_path.open("wb") as f:
         f.write(file_b)
+
+    if is_image:
+    # 2) OCR MUST run on the image path (NOT a PDF)
+        ocr_out = ocr_service.read(str(file_path), mode="smart")
+        ocr_text = (ocr_out.get("cleaned_text") or ocr_out.get("full_text") or "").strip()
+        if not ocr_text:
+            raise HTTPException(status_code=400, detail="The uploaded image contains no recognizable text for analysis.")
 
     # Ensure report_file exists
     report_file = db.query(ReportFile).filter_by(file_hash=file_hash).first()
@@ -108,11 +141,11 @@ async def upload_document(
         db.commit()
         db.refresh(report_file)
     
-    # Check if existing analysis result exists (unless forcing re-analysis)
+    # Check for existing analysis results (unless forcing re-analysis)
     if not force_new:
         latest_report = db.query(Report).filter_by(file_id=report_file.id).order_by(Report.analysis_time.desc()).first()
         if latest_report:
-            # Delete newly uploaded file when using old report
+            # Delete newly uploaded file when viewing old report
             file_path.unlink(missing_ok=True)
             return {
                 "filename": report_file.original_filename,
@@ -129,14 +162,18 @@ async def upload_document(
 
     # 🔍 Detect PDF language
     try:
-        reader = PdfReader(str(file_path))
         sample_text = ''
-        for page in reader.pages:
-            text = page.extract_text()
-            if text:
-                sample_text += text
-            if len(sample_text) > 1000:
-                break
+        if is_pdf:
+            reader = PdfReader(str(file_path))
+            for page in reader.pages:
+                text = page.extract_text()
+                if text:
+                    sample_text += text
+                if len(sample_text) > 1000:
+                    break
+        else:
+            sample_text = ocr_text
+            print("sample_text", sample_text)
         detected_language = detect(sample_text[:2000]) if sample_text.strip() else "unknown"
     except Exception as e:
         print(f"[Warning] Language detection failed: {e}")
@@ -147,13 +184,25 @@ async def upload_document(
         
         # Parse and split document
         print(f"[INFO] Processing PDF document...")
-        chunks = await process_pdf_document(str(file_path))
+        chunks = 0
+        if is_pdf:
+            chunks = await process_pdf_document(str(file_path))
+        else:
+            chunks = await process_ocr_text(ocr_text)
         print(f"[INFO] Document processed, created {len(chunks)} chunks")
 
-        # Create vector index
+        # Create and persist vector index
         from langchain_community.vectorstores import Chroma
-        vector_store = Chroma.from_documents(chunks, embedding_model)
-        document_stores[session_id] = vector_store
+        from app.config import VECTOR_STORE_DIR
+        persist_path = VECTOR_STORE_DIR / session_id
+        vector_store = Chroma.from_documents(
+            chunks, 
+            embedding_model,
+            persist_directory=str(persist_path)
+        )
+        from app.core.store import save_vector_store
+        save_vector_store(session_id, vector_store)
+        document_stores[session_id] = vector_store  # Keep in memory for current session
 
         # Extract company name
         company_query = "What is the name of the company that published this report?"
@@ -170,24 +219,35 @@ async def upload_document(
 
         # Perform ESG analysis
         print(f"[INFO] Starting ESG analysis for company: {company_name}")
-        analysis_results = await comprehensive_esg_analysis(session_id, vector_store, company_name, overrided_language or "en")
-        print(f"[INFO] ESG analysis completed successfully")
 
-        # Check for errors in analysis results
-        if analysis_results.get("error"):
-            raise Exception(analysis_results["error"])
+        analysis_result = await comprehensive_esg_analysis(session_id, vector_store, company_name, "en")
+        if analysis_result.get("error"):
+            raise Exception(analysis_result["error"])
 
-        print("=== METRICS JSON ===")
-        print(analysis_results["metrics"])
+        final_synthesis_en = analysis_result.get("final_synthesis", "")
+        metrics_ref = analysis_result.get("metrics", {}) or {}
 
-        # Create Report record
+        final_synthesis_de = await translate_text(final_synthesis_en, "German")
+        final_synthesis_it = await translate_text(final_synthesis_en, "Italian")
+
+        finals_by_lang = {
+            "en": final_synthesis_en,
+            "de": final_synthesis_de,
+            "it": final_synthesis_it,
+        }
+
         report = Report(
             session_id=session_id,
             company_name=company_name,
-            overall_score = analysis_results["metrics"].get("overall_greenwashing_score", {}).get("score", 0) * 10,
-            risk_type=_get_main_risk_type(analysis_results),
-            metrics=json.dumps(analysis_results["metrics"]),
-            analysis_summary=analysis_results["final_synthesis"],
+            overall_score=(metrics_ref.get("overall_greenwashing_score", {}) or {}).get("score", 0) * 10,
+            risk_type=_get_main_risk_type({"metrics": {"breakdown": [
+                {"type": k, "value": (v or {}).get("score", 0) * 10}
+                for k, v in (metrics_ref.items() if isinstance(metrics_ref, dict) else [])
+                if k != "overall_greenwashing_score"
+            ]}}),
+            metrics=json.dumps(metrics_ref),
+            analysis_summary=final_synthesis_en,
+            analysis_summary_i18n=json.dumps(finals_by_lang),
             file_id=report_file.id
         )
         db.add(report)
@@ -198,35 +258,52 @@ async def upload_document(
             "filename": file_path.name,
             "company_name": company_name,
             "session_id": session_id,
-            "response": analysis_results["final_synthesis"],
-            "initial_analysis": analysis_results["initial_analysis"],
-            "document_analysis": analysis_results["document_analysis"],
-            "news_validation": analysis_results["news_validation"],
-            "wikirate_validation": analysis_results["wikirate_validation"],
-            "graphdata": analysis_results["metrics"],
-            "metrics": analysis_results.get("metrics"),
-            "comprehensive_analysis": analysis_results["comprehensive_analysis"],
-            "tool_plan": analysis_results.get("tool_plan"),
-            "validations": analysis_results.get("validations"),
-            "quotations": analysis_results.get("quotations"),
-            "final_synthesis": analysis_results.get("final_synthesis"),
+            "response": final_synthesis_en,
+            "graphdata": metrics_ref,
+            "metrics": metrics_ref,
+            "final_synthesis": final_synthesis_en,
+            "final_synthesis_i18n": finals_by_lang,
             "validation_complete": True,
-            "filenames": ["bbc_articles", "cnn_articles"] if company_name.lower() in VALID_COMPANIES else None,
-            "workflow_error": analysis_results.get("error"),
-            "detected_language": detected_language,
-            "overrided_language": overrided_language or "en",
         }
 
-        # Store in memory for /report/{session_id} query
+
+        # Store in memory for /report/{session_id} queries
         analysis_results_by_session[session_id] = result
-        print(f"[INFO] Analysis results stored for session {session_id}")
         print(f"[INFO] Stored data keys: {list(result.keys())}")
+        print(f"[DEBUG] Analysis results stored for session: {session_id}")
+
+        # Save session with vector store and analysis results
+        session_data = {
+            "company_name": company_name,
+            "analysis_results": result,
+            "agent_executor": True,  # Mark that agent was initialized
+            "vector_store_path": str(persist_path),
+            "created_at": datetime.now().timestamp()
+        }
+        print(f"[DEBUG] Saving session data with keys: {list(session_data.keys())}")
+        save_session(session_id, session_data, db)
+        print(f"[INFO] Session {session_id} saved to persistent storage")
+
+        # Register agent executor
+        print(f"[AGENT DEBUG] Creating agent for session: {session_id}")
+        from app.core.esg_analysis import create_esg_agent
+        agent = create_esg_agent(session_id, vector_store, company_name)
+        agent_executors[session_id] = agent
+        print(f"[AGENT DEBUG] Agent created and registered for session: {session_id}")
+        print(f"[AGENT DEBUG] Current active agents: {list(agent_executors.keys())}")
 
         return result
 
     except Exception as e:
-        # Delete saved file if analysis fails
+        # Delete saved files if analysis fails
         file_path.unlink(missing_ok=True)
+        # Clean up agent if created
+        try:
+            if session_id in agent_executors:
+                print(f"[AGENT DEBUG] Cleaning up agent for failed session: {session_id}")
+                del agent_executors[session_id]
+        except NameError:
+            pass  # agent_executors not imported/available
         # Rollback database operations
         db.rollback()
         

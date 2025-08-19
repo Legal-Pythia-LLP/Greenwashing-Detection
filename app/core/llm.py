@@ -24,11 +24,12 @@ from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmb
 
 # Option 2: Google Gemini LLM
 llm = ChatGoogleGenerativeAI(
-    model="gemini-2.0-flash",  # Faster model variant
-    temperature=0,             # Deterministic outputs
-    max_tokens=None,           # Use model default
-    timeout=None,              # Default timeout
-    max_retries=2,             # Retry failed requests 2 times
+  model="gemini-2.0-flash",  # flash is faster
+  temperature=0,  # Controls text generation "randomness" - 0 means completely deterministic, 0.7 slightly creative, 1.0 more random
+  max_tokens=None,  # Maximum tokens to generate - None means use model default (can be omitted)
+  timeout=None,  # Maximum wait time per request - None means default wait, can set to 60s etc
+  max_retries=2,  # Max retries on error - recommended 2-3
+    # other params...
 )
 
 # -------------------------------

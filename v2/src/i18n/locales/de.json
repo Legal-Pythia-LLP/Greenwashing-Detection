@@ -81,7 +81,17 @@
     "uploadFailed": "Upload fehlgeschlagen ({{status}})",
     "analysisCreated": "Analyse erstellt, Bericht wird generiert...",
     "backendNotConnected": "Backend nicht verbunden, lokaler Vorschaubericht erstellt",
-    "uploadFailedRetry": "Upload fehlgeschlagen, bitte später versuchen"
+    "uploadFailedRetry": "Upload fehlgeschlagen, bitte später versuchen",
+    "duplicateDialog": {
+      "title": "Doppelte Analyse erkannt",
+      "description": "Diese Datei wurde bereits analysiert. Möchten Sie sie neu analysieren oder die vorhandenen Ergebnisse anzeigen?",
+      "showOld": "Vorhandene Ergebnisse anzeigen",
+      "reanalyze": "Ja, neu analysieren"
+    },
+    "reanalyzing": "Neuanalyse läuft...",
+    "errors": {
+      "reanalyzeFailed": "Neuanalyse fehlgeschlagen"
+    }
   },
   "company": {
     "title": "Unternehmens-Analysebericht",
@@ -96,8 +106,11 @@
     "riskBreakdown": "Risikotyp-Aufschlüsselung",
     "evidenceChain": "Beweiskette & Original-Zitate",
     "reason": "Grund: {{reason}}",
+    "keyFindings": "Wichtige Ergebnisse und Beweise aus der Dokumentenanalyse",
+    "recommendations": "Spezifische Empfehlungen für Stakeholder",
     "jumpToOriginal": "Zum Original-Bericht springen",
     "externalVerification": "Externe Verifizierung & Hintergrundinformationen",
+    "riskAssessmentConcerns": "Risikobewertung und Bedenken",
     "recommendedActions": "Empfohlene nächste Schritte",
     "action1": "Quantifizierbare Metriken anfordern und prüfen (Basisjahr, Abdeckung, Zielwerte).",
     "action2": "Prüfberichte von Drittparteien verifizieren, Fokus auf Methodik und Grenzziehung.",

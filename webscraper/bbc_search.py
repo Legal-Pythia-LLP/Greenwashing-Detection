@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 
 def date_calculation(delta: int) -> datetime:
     """
-    Calculate the date delta days from today, used for news crawler's time range.
+    Calculate the date delta days from today, used for news crawler time range.
     """
     current_date = datetime.now()
     from_date = current_date - timedelta(days=delta)
@@ -18,15 +18,15 @@ def date_calculation(delta: int) -> datetime:
 
 def url_download(links: dict, directory: str = "downloads") -> Dict[str, str]:
     """
-    Download all links to a local directory, returning a mapping from title to local file path.
-    Handles duplicate filenames and illegal characters automatically without clearing the directory each time.
+    Download all links to a local directory and return a mapping from title to local file path.
+    Automatically handles duplicate and invalid filenames, avoiding clearing the directory each time.
     """
     os.makedirs(directory, exist_ok=True)
     downloads_dictionary = {}
 
     try:
         for title, url in links.items():
-            # Safe filename + unique hash
+            # Convert title to a safe filename + unique hash
             safe_title = "".join(char for char in title if char.isalnum())
             if not safe_title:
                 safe_title = "article"
@@ -55,17 +55,17 @@ def url_download(links: dict, directory: str = "downloads") -> Dict[str, str]:
 
 def url_validity(url: str) -> bool:
     """
-    Determine if the URL is of a news/article type.
+    Determine whether the URL is a news/article type.
     """
     return "articles" in url or "news" in url
 
 
 def date_conversion(date: str) -> datetime:
     """
-    Convert a scraped date string to a datetime object.
+    Convert the crawled date string to a datetime object.
     """
     components = date.split(" ")
-    if len(components) == 3 and components[2] == "ago":  # e.g., ['8','hours','ago']
+    if len(components) == 3 and components[2] == "ago":  # e.g. ['8','hours','ago']
         if components[1] == "hours":
             return datetime.now() - timedelta(hours=int(components[0]))
         else:
@@ -74,13 +74,13 @@ def date_conversion(date: str) -> datetime:
         month = datetime.strptime(components[1], "%B").month
         if len(components) == 2:  # e.g., ['30','October']
             return datetime(datetime.now().year, month, int(components[0]))
-        else:  # e.g., ['30','October','2021']
+        else:  # e.g. ['30','October','2021']
             return datetime(int(components[2]), month, int(components[0]))
 
 
 def bbc_search(name: str) -> Dict[str, str]:
     """
-    BBC news crawler: search news related to `name`, download and return local file paths.
+    BBC news crawler: search for news related to 'name', download, and return local paths.
     """
     depth = 10
     delta = 365 * 2

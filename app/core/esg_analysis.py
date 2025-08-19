@@ -14,11 +14,12 @@ from langchain_community.vectorstores import Chroma
 from langchain.agents import AgentExecutor
 from langchain.memory import ConversationBufferWindowMemory
 from langchain.tools import Tool
+import re
 import json
 from app.core.utils import is_esg_related
 from app.core.company import extract_company_info
 
-# Global object caches
+# Global object cache
 document_stores: Dict[str, Chroma] = {}
 agent_executors: Dict[str, AgentExecutor] = {}
 memories: Dict[str, ConversationBufferWindowMemory] = {}
@@ -162,6 +163,8 @@ def determine_tools_for_each_quotation(state: ESGAnalysisState) -> ESGAnalysisSt
     if state.get("error"):
         return state
     quotations = state.get("quotations", [])
+
+    #  Force parse string JSON (if needed)
     if isinstance(quotations, str):
         print("[WARNING] quotations is a string. Attempting to parse JSON...")
         try:
@@ -218,6 +221,8 @@ def validate_each_quotation_independently(state: ESGAnalysisState) -> ESGAnalysi
     validated = []
     news_tool = NewsValidationTool(company_name)
     wikirate_tool = WikirateValidationTool(company_name)
+
+    #  STEP 1: Collect quotations needing validation
     news_quotations = []
     wiki_quotations = []
     for item in tool_plan:
@@ -225,6 +230,8 @@ def validate_each_quotation_independently(state: ESGAnalysisState) -> ESGAnalysi
             news_quotations.append(item["quotation"])
         if "wikirate_validation" in item["tools"]:
             wiki_quotations.append(item["quotation"])
+
+    # STEP 2: Batch call news_validation
     news_results = []
     if news_quotations:
         try:
@@ -237,6 +244,8 @@ def validate_each_quotation_independently(state: ESGAnalysisState) -> ESGAnalysi
             news_results = full_result.strip().split("\n\n")
         except Exception as e:
             news_results = [f"[Error] {str(e)}"] * len(news_quotations)
+
+    # STEP 3: Batch call wikirate_validation
     wiki_results = []
     if wiki_quotations:
         try:
@@ -249,6 +258,8 @@ def validate_each_quotation_independently(state: ESGAnalysisState) -> ESGAnalysi
             wiki_results = full_result.strip().split("\n\n")
         except Exception as e:
             wiki_results = [f"[Error] {str(e)}"] * len(wiki_quotations)
+
+    # STEP 4: Assign results back to each quotation
     news_index = 0
     wiki_index = 0
     for item in tool_plan:
@@ -288,6 +299,9 @@ def calculate_metrics(state: ESGAnalysisState) -> ESGAnalysisState:
     except Exception as e:
         state["error"] = f"Error calculating metrics: {str(e)}"
         return state
+    
+def clean_markdown_stars(text: str) -> str:
+    return re.sub(r"\*\*(.*?)\*\*", r"\1", text)
 
 def synthesize_final_report(state: ESGAnalysisState) -> ESGAnalysisState:
     if state.get("error"):
@@ -315,6 +329,7 @@ def synthesize_final_report(state: ESGAnalysisState) -> ESGAnalysisState:
     try:
         response = llm.invoke([HumanMessage(content=prompt)])
         state["final_synthesis"] = response.content
+        state["final_synthesis"] = clean_markdown_stars(state["final_synthesis"])
         return state
     except Exception as e:
         state["error"] = f"Error generating final report: {str(e)}"
@@ -337,7 +352,7 @@ def debug_state_log(state: ESGAnalysisState) -> ESGAnalysisState:
 def create_esg_analysis_graph():
     workflow = StateGraph(ESGAnalysisState)
     workflow.add_node("generate_thoughts", generate_initial_thoughts)
-    workflow.add_node("evaluate_thoughts", evaluate_and_select_thoughts)
+    workflow.add_node("evaluate_thoughts", evaluate_and_select_thoughts)  # ✅ New
     workflow.add_node("document_analysis", perform_document_analysis)
     workflow.add_node("extract_quotations", extract_quotations_and_tools)
     workflow.add_node("select_tools", determine_tools_for_each_quotation)
@@ -345,7 +360,7 @@ def create_esg_analysis_graph():
     workflow.add_node("calculate_metrics", calculate_metrics)
     workflow.add_node("final_synthesis", synthesize_final_report)
     workflow.set_entry_point("generate_thoughts")
-    workflow.add_edge("generate_thoughts", "evaluate_thoughts")
+    workflow.add_edge("generate_thoughts", "evaluate_thoughts")  # ✅ Critical fix
     workflow.add_edge("evaluate_thoughts", "document_analysis")
     workflow.add_edge("document_analysis", "extract_quotations")
     workflow.add_node("debug_log", debug_state_log)
@@ -362,6 +377,9 @@ def create_esg_analysis_graph():
     return workflow.compile()
 
 def create_esg_agent(session_id: str, vector_store: Chroma, company_name: str) -> AgentExecutor:
+    """Create a ReAct agent for ESG analysis"""
+    
+    print(f"[DEBUG] Starting agent creation for session {session_id}")
     from langchain.agents import initialize_agent
     from langchain.agents.agent_types import AgentType
     tools = [
@@ -380,8 +398,21 @@ def create_esg_agent(session_id: str, vector_store: Chroma, company_name: str) -
             func=lambda text: str(is_esg_related(text))
         )
     ]
-    memory = ConversationBufferWindowMemory(memory_key="chat_history", k=10, return_messages=True)
+    
+    # Create memory with summary and vector store
+    from langchain.memory import ConversationSummaryMemory
+    memory = ConversationSummaryMemory(
+        llm=llm,
+        memory_key="chat_history",
+        return_messages=True
+    )
     memories[session_id] = memory
+    
+    # Add vector store as long-term memory
+    vector_store.as_retriever(search_kwargs={"k": 3})
+    
+    # Initialize agent
+    print(f"[DEBUG] Initializing agent for session {session_id}")
     agent = initialize_agent(
         tools=tools,
         llm=llm,
@@ -391,14 +422,48 @@ def create_esg_agent(session_id: str, vector_store: Chroma, company_name: str) -
         max_iterations=15,
         early_stopping_method="force"
     )
+    print(f"[DEBUG] Agent initialized successfully for session {session_id}")
+    
+    # save session
+    print(f"[DEBUG] Saving session configuration for {session_id}")
+    from app.core.store import save_session
+    from app.db import get_db
+    db = next(get_db())
+    try:
+        session_data = {
+            "agent_config": {
+                "company_name": company_name,
+                "tools": [tool.name for tool in tools],
+                "vector_store_path": f"data/vector_stores/{session_id}",
+                "session_id": session_id
+            },
+            "vector_store_path": f"data/vector_stores/{session_id}",
+            "company_name": company_name
+        }
+        print(f"[DEBUG] Session data to save: {json.dumps(session_data, indent=2)}")
+        save_result = save_session(session_id, session_data, db)
+        print(f"[DEBUG] Session save result: {save_result}")
+    except Exception as e:
+        print(f"[ERROR] Failed to save session: {str(e)}")
+        raise
+    finally:
+        db.close()
+        print(f"[DEBUG] DB connection closed for session {session_id}")
+    
     return agent
 
+# This function performs a comprehensive ESG analysis, first trying the LangGraph workflow, then falling back to agent-based analysis if workflow creation/execution fails
 async def comprehensive_esg_analysis(session_id: str, vector_store: Chroma, company_name: str, output_language: str = "en") -> Dict[str, Any]:
     try:
+        # Build and compile LangGraph workflow for ESG analysis
         analysis_graph = create_esg_analysis_graph()
     except Exception as e:
         print(f"Error creating LangGraph workflow: {e}")
-        return await fallback_agent_analysis(session_id, vector_store, company_name, output_language)
+        # Fallback to agent-based analysis
+        # If LangGraph workflow creation fails, immediately fall back to calling fallback_agent_analysis async function
+        return await fallback_agent_analysis(session_id, vector_store, company_name,output_language)
+    
+    # Create agent for fallback
     agent = create_esg_agent(session_id, vector_store, company_name)
     agent_executors[session_id] = agent
     initial_state = ESGAnalysisState(

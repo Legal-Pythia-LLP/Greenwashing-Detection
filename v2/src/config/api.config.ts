@@ -1,9 +1,9 @@
 // API Configuration
 export const API_CONFIG = {
   // Use local backend in development environment
-  BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/v1',
+  BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/v2',
   
-  // API endpoints
+  // API Endpoints
   ENDPOINTS: {
     UPLOAD: '/upload',
     CHAT: '/chat',
@@ -12,14 +12,14 @@ export const API_CONFIG = {
     DASHBOARD: '/dashboard',
   },
   
-  // Timeout settings
+  // Timeout setting
   TIMEOUT: 30000,
   
-  // Retry attempts
+  // Retry count
   RETRY_COUNT: 3,
 };
 
-// Check if it's development environment
+// Check if in development environment
 export const IS_DEV = import.meta.env.DEV;
 
 // Get full API URL

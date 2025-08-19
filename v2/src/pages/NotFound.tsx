@@ -15,9 +15,9 @@ const NotFound = () => {
     <div className="min-h-screen flex items-center justify-center [background-image:var(--gradient-soft)]">
       <div className="text-center">
         <h1 className="text-4xl font-bold mb-4">404</h1>
-        <p className="text-xl text-muted-foreground mb-4">Oops! 页面未找到</p>
+        <p className="text-xl text-muted-foreground mb-4">Oops! Page not found</p>
         <a href="/" className="underline">
-          返回首页
+          Back to Home
         </a>
       </div>
     </div>

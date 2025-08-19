@@ -1,80 +1,145 @@
-import { useState } from "react"; 
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { MessageCircle, X, Send, Loader2 } from "lucide-react";
+import { MessageCircle, X, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { APIService } from "@/services/api.service";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
 }
 
-export function FloatingChatbot() {
+interface FloatingChatbotProps {
+  sessionId?: string;
+}
+
+export function FloatingChatbot({ sessionId }: FloatingChatbotProps) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      content: t('chatbot.welcome')
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isInitializing, setIsInitializing] = useState(false);
+
+  // Prevent body scroll when chat is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
     }
-  ]);
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
+  // Load conversation history when opening chat
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const loadHistory = async () => {
+      setIsInitializing(true);
+      try {
+        // Prefer using the provided sessionId, otherwise use lastSessionId from localStorage
+        const targetSessionId = sessionId || localStorage.getItem("lastSessionId");
+        if (!targetSessionId) {
+          setMessages([
+            {
+              role: "assistant",
+              content: t("chatbot.welcome"),
+            },
+          ]);
+          return;
+        }
+
+        const history = await APIService.getConversation(targetSessionId);
+        if (history?.messages?.length > 0) {
+          setMessages(
+            history.messages
+              .filter(
+                (msg: any) => msg.sender === "user" || msg.sender === "assistant"
+              ) // 🚀 filter out system messages
+              .map((msg: any) => ({
+                role: msg.sender as "user" | "assistant",
+                content: msg.content,
+              }))
+          );
+        } else {
+          setMessages([
+            {
+              role: "assistant",
+              content: t("chatbot.welcome"),
+            },
+          ]);
+        }
+      } catch (error) {
+        console.error("Failed to load conversation:", error);
+        setMessages([
+          {
+            role: "assistant",
+            content: t("chatbot.welcome"),
+          },
+        ]);
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+
+    loadHistory();
+  }, [isOpen, t, sessionId]);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  // Auto scroll to bottom when messages change
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView();
+    }
+  }, [messages]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
     const userMessage = input.trim();
     setInput("");
-    setMessages(prev => [...prev, { role: "user", content: userMessage }]);
+    setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
     setIsLoading(true);
 
     try {
-      // Enhanced chatbot logic with access to all reports
-      const lastSessionId = localStorage.getItem('lastSessionId');
-      
-      const response = await fetch("/v1/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: userMessage,
-          session_id: lastSessionId || "global_chat",
-          context: "floating_chatbot"
-        }),
-      });
+      // Prefer using the provided sessionId, otherwise use lastSessionId from localStorage
+      const targetSessionId = sessionId || localStorage.getItem("lastSessionId");
 
-      if (!response.ok) {
-        // Fallback with enhanced context awareness
+      try {
+        const response = await APIService.sendChatMessage(
+          userMessage,
+          targetSessionId || "global_chat"
+        );
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: response || t("common.error") },
+        ]);
+      } catch (error) {
         const assistantReply = generateSmartReply(userMessage);
-        setMessages(prev => [...prev, { role: "assistant", content: assistantReply }]);
-      } else {
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
-        let assistantContent = "";
-
-        if (reader) {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            
-            const chunk = decoder.decode(value);
-            assistantContent += chunk;
-          }
-        }
-
-        setMessages(prev => [...prev, { role: "assistant", content: assistantContent || t('common.error') }]);
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: assistantReply },
+        ]);
       }
     } catch (error) {
       console.error("Chat error:", error);
       const smartReply = generateSmartReply(userMessage);
-      setMessages(prev => [...prev, { role: "assistant", content: smartReply }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: smartReply },
+      ]);
       toast({
-        title: t('chatbot.connectionFailed'),
-        description: t('chatbot.localReplyEnabled'),
-        variant: "destructive"
+        title: t("chatbot.connectionFailed"),
+        description: t("chatbot.localReplyEnabled"),
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -83,28 +148,28 @@ export function FloatingChatbot() {
 
   const generateSmartReply = (question: string) => {
     const q = question.toLowerCase();
-    
-    if (q.includes("公司") && q.includes("风险")) {
-      return "Based on analyzed company reports, high-risk companies mainly face the following issues: 1) Excessive vague statements 2) Lack of quantitative metrics 3) Insufficient third-party verification. Focus on these dimensions is recommended.";
+
+    if (q.includes("company") && q.includes("risk")) {
+      return "Based on analyzed company reports, high-risk companies mainly have the following issues: 1) Excessive vague statements 2) Lack of quantitative metrics 3) Insufficient third-party verification. Focus on these aspects.";
     }
-    
-    if (q.includes("漂绿") || q.includes("greenwash")) {
-      return "Greenwashing detection focuses on five dimensions: vague statements, lack of metrics, misleading terms, insufficient third-party verification, and unclear scope. Each dimension is scored from 0-100 to assess overall greenwashing risk.";
+
+    if (q.includes("greenwash") || q.includes("greenwashing")) {
+      return "Greenwashing detection focuses on five dimensions: vague statements, lack of metrics, misleading terms, insufficient third-party verification, and unclear scope. Each dimension is scored 0-100 to assess greenwashing risk.";
     }
-    
-    if (q.includes("报告") && (q.includes("上传") || q.includes("分析"))) {
-      return "You can submit ESG reports on the upload page for analysis. The system will automatically extract key statements, assess risk, and generate a detailed greenwashing analysis report.";
+
+    if (q.includes("report") && (q.includes("upload") || q.includes("analyze"))) {
+      return "You can submit ESG reports on the upload page for analysis. The system will automatically extract key statements, assess risks, and generate a detailed greenwashing analysis report.";
     }
-    
-    if (q.includes("评分") || q.includes("分数")) {
-      return "The scoring system uses a 0-100 scale, with scores above 70 considered high risk. Scores are based on AI analysis combined with external verification, including news validation and Wikirate database checks.";
+
+    if (q.includes("score") || q.includes("rating")) {
+      return "The scoring system uses a 0-100 scale, with scores above 70 considered high risk. Scores are based on AI analysis combined with external verification, including news and Wikirate database checks.";
     }
-    
-    if (q.includes("建议") || q.includes("recommendation")) {
-      return "Based on the analysis, recommendations include: 1) Add specific quantitative metrics 2) Provide third-party certification 3) Clearly disclose scope and boundaries 4) Avoid vague statements 5) Regularly update data and maintain transparency.";
+
+    if (q.includes("recommendation")) {
+      return "Based on the analysis, recommendations include: 1) Increase specific quantitative targets 2) Provide third-party certifications 3) Clearly disclose scope and boundaries 4) Avoid vague statements 5) Regularly update data and maintain transparency.";
     }
-    
-    return "I can help answer questions related to ESG analysis, greenwashing detection, and company risk assessment. You can also inquire about specific company analyses or upload new reports for review.";
+
+    return "I can help answer questions related to ESG analysis, greenwashing detection, and company risk assessment. You can also inquire about specific company analysis results or upload new reports for analysis.";
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -138,10 +203,10 @@ export function FloatingChatbot() {
                   </div>
                   <div>
                     <h2 className="text-2xl font-bold gradient-text">
-                      {t('chatbot.title')}
+                      {t("chatbot.title")}
                     </h2>
                     <p className="text-muted-foreground">
-                      {t('chatbot.explainableAi')}
+                      {t("chatbot.explainableAi")}
                     </p>
                   </div>
                 </div>
@@ -158,11 +223,16 @@ export function FloatingChatbot() {
 
             {/* Messages */}
             <div className="flex-1 m-6 mt-4 modern-card p-6 overflow-hidden">
-              <div className="h-full overflow-y-auto space-y-6 pr-2">
+              <div
+                className="h-full overflow-y-auto space-y-6 pr-2"
+                onWheel={(e) => e.stopPropagation()}
+              >
                 {messages.map((msg, idx) => (
                   <div
                     key={idx}
-                    className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                    className={`flex ${
+                      msg.role === "user" ? "justify-end" : "justify-start"
+                    }`}
                   >
                     <div
                       className={`max-w-[80%] p-4 rounded-2xl text-sm shadow-medium ${
@@ -180,11 +250,12 @@ export function FloatingChatbot() {
                     <div className="modern-card border-border/50 p-4 rounded-2xl text-sm flex items-center gap-3">
                       <div className="w-6 h-6 rounded-full bg-gradient-to-r from-primary to-accent animate-spin border-2 border-transparent border-t-primary"></div>
                       <span className="gradient-text font-medium">
-                        {t('chatbot.analyzing')}
+                        {t("chatbot.analyzing")}
                       </span>
                     </div>
                   </div>
                 )}
+                <div ref={messagesEndRef} />
               </div>
             </div>
 
@@ -196,7 +267,7 @@ export function FloatingChatbot() {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder={t('chatbot.placeholder')}
+                    placeholder={t("chatbot.placeholder")}
                     className="min-h-[60px] max-h-[120px] resize-none bg-background/50 border-border/50 focus:border-primary/50 focus:ring-primary/20 text-base"
                     disabled={isLoading}
                   />
@@ -214,8 +285,8 @@ export function FloatingChatbot() {
                 </Button>
               </div>
               <div className="flex items-center justify-between mt-4 text-xs text-muted-foreground">
-                <span>{t('chatbot.enterTip')}</span>
-                <span>{t('chatbot.connectedToDb')}</span>
+                <span>{t("chatbot.enterTip")}</span>
+                <span>{t("chatbot.connectedToDb")}</span>
               </div>
             </div>
           </div>

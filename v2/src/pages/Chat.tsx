@@ -34,13 +34,13 @@ const Chat = () => {
     setSendingMessage(true);
 
     try {
-      const res = await fetch("/v1/chat", {
+      const res = await fetch("/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: userMsg.content, session_id: sessionId }),
       });
       if (!res.ok || !res.body) {
-        throw new Error("Chat API unavailable or missing analysis session. Please upload a report first.");
+        throw new Error("Chat API unavailable or analysis session missing, please upload a report first");
       }
 
       const reader = res.body.getReader();
@@ -59,7 +59,7 @@ const Chat = () => {
       setMessages((prev) => [...prev, { role: "assistant", content: acc }]);
       setCurrentMessage(null);
     } catch (e: any) {
-      const msg = e?.message || "Failed to send message";
+      const msg = e?.message || "Sending failed";
       setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${msg}` }]);
     } finally {
       setSendingMessage(false);
@@ -74,27 +74,27 @@ const Chat = () => {
   }, [handleSend]);
 
   const handleValidate = useCallback(() => {
-    // Reserved for validation actions
+    // Placeholder for validation behavior
   }, []);
 
   return (
     <div className="min-h-screen [background-image:var(--gradient-soft)]">
       <Seo
         title="Chat & Analysis | Explainable AI"
-        description="Upload documents and chat with Explainable AI to see interpretable greenwashing analysis results."
+        description="Upload documents and chat with Explainable AI to view explainable greenwashing analysis results."
         canonical={typeof window !== 'undefined' ? window.location.href : undefined}
         jsonLd={{
           "@context": "https://schema.org",
           "@type": "WebPage",
           name: "Chat & Analysis",
-          description: "Upload documents and chat with Explainable AI to see interpretable greenwashing analysis results.",
+          description: "Upload documents and chat with Explainable AI to view explainable greenwashing analysis results.",
         }}
       />
       <TopNav />
       <main className="max-w-5xl mx-auto px-4 py-6">
         <header className="mb-4">
           <h1 className="text-2xl font-bold tracking-tight">Chat & Analysis</h1>
-          <p className="text-muted-foreground mt-1">Integrated with docs/web chat interface (sample data).</p>
+          <p className="text-muted-foreground mt-1">Connected to docs/web chat interface (sample data).</p>
         </header>
         <section>
           <div className="rounded-md border bg-background/60">

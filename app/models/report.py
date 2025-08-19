@@ -1,10 +1,10 @@
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, Float, Text, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
-from app.config import Base  # Base must be created beforehand
+from app.config import Base  # Need to create Base first
 
 class ReportFile(Base):
-    """Store report file information"""
+    """Stores report file information"""
     __tablename__ = "report_files"
     
     id = Column(Integer, primary_key=True, index=True)
@@ -16,7 +16,7 @@ class ReportFile(Base):
     reports = relationship("Report", back_populates="report_file")
 
 class Report(Base):
-    """Store analysis report results"""
+    """Stores analysis report results"""
     __tablename__ = "reports"
     
     id = Column(Integer, primary_key=True, index=True)
@@ -25,8 +25,9 @@ class Report(Base):
     overall_score = Column(Float)
     risk_type = Column(String(128))
     analysis_time = Column(DateTime, default=datetime.utcnow)
-    metrics = Column(Text)  # Store metrics data in JSON format
+    metrics = Column(Text)  # Stores metrics data in JSON format
     analysis_summary = Column(Text)
+    analysis_summary_i18n = Column(Text, nullable=True)
     file_id = Column(Integer, ForeignKey("report_files.id"))
     
     report_file = relationship("ReportFile", back_populates="reports")

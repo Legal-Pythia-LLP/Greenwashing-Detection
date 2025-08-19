@@ -9,7 +9,7 @@ import json
 import requests
 import cloudscraper
 from app.config import WIKIRATE_API_KEY
-from app.core.utils import search_and_filter_news  # According to your placement
+from app.core.utils import search_and_filter_news  # Location depends on your setup
 
 # get_company_name
 from wikirate4py import API
@@ -21,12 +21,12 @@ import csv
 import re
 import multiprocessing
 
-# Fuzzy name matching
-# Custom normalization method (imitating NameMatcher transform=True)
+# Name fuzzy matching
+# Custom normalization method (mimics NameMatcher transform=True)
 def normalize_name(name: str) -> str:
     name = name.lower()
     name = re.sub(r'[^a-z0-9\s]', '', name)  # Remove punctuation
-    name = re.sub(r'\s+', ' ', name)  # Remove extra spaces
+    name = re.sub(r'\s+', ' ', name)  # Remove extra whitespace
     return name.strip()
 
 def get_isin_count(company):
@@ -41,12 +41,12 @@ def get_isin_count(company):
 
 
 class WikirateClient:
-    """Wikirate API client for retrieving and validating ESG data"""
+    """Wikirate API client for fetching and validating ESG data"""
 
     def __init__(self, api_key: Optional[str] = None):
         self.base_url = "https://wikirate.org"
         self.api_key = api_key
-        self.session = cloudscraper.create_scraper(  # Replace requests
+        self.session = cloudscraper.create_scraper(  # Alternative to requests
             browser={
                 'browser': 'chrome',
                 'platform': 'windows',
@@ -54,7 +54,7 @@ class WikirateClient:
             }
         )
 
-        # Cloudscraper by default attaches a real browser UA
+        # Cloudscraper defaults to including real browser UA
         self.session.headers.update({
             'Accept': 'application/json'
         })
@@ -65,13 +65,14 @@ class WikirateClient:
             })
 
     def search_company(self, company_name: str) -> Dict[str, Any]:
-        """Search for company information, supports exact and fuzzy search"""
+        """Search company info, supports exact name and fuzzy search"""
         try:
             original_name = company_name.strip()
             clean_name = original_name.strip()
-            print(f"[Wikirate] Attempting exact search: --{clean_name}--")
+            print(f"[Wikirate] Trying exact search: --{clean_name}--")
             direct_url = f"{self.base_url}/{clean_name}.json"
 
+            # print(f"[Wikirate] Trying exact search: {direct_url}")
             response = self.session.get(direct_url, timeout=10)
 
             print(f"[DEBUG] Status Code: {response.status_code}")
@@ -96,7 +97,8 @@ class WikirateClient:
                     "image_url": safe_get(data.get("image"), "content")
                 }
 
-            # If exact search fails, use search API for fuzzy search
+            # If exact search fails, fall back to fuzzy search API
+            # print(f"[Wikirate] Exact search failed, using fuzzy search: '{original_name}'")
             search_url = f"{self.base_url}/search.json"
             params = {
                 'q': original_name,
@@ -108,16 +110,22 @@ class WikirateClient:
                 results = response.json().get("items", [])
                 for item in results:
                     if item.get("type") == "Company":
+                        # print(f"[Wikirate] Fuzzy search found company: {item.get('name')}")
                         return item
 
+            # print(f"[Wikirate] Company '{company_name}' not found in Wikirate")
             return {}
 
         except Exception as e:
+            # print(f"[Wikirate] Search error occurred: {e}")
             return {}
 
-    # Main function: fuzzy match by input name and choose best match based on ISIN count
+    # Main function: Fuzzy match input name and select best match based on ISIN count
     def find_best_matching_company(self, input_name: str) -> str:
-        csv_path = "wikirate_companies_all.csv"
+        # self.parallel_fetch(num_workers=6)
+
+        # Load company data
+        csv_path = "data_files\wikirate_companies_all.csv"
         wikirate_companies = []
 
         try:
@@ -136,17 +144,17 @@ class WikirateClient:
         keyword = input_name.lower()
         filtered_companies = [c for c in wikirate_companies if keyword in c['name'].lower()]
         if not filtered_companies:
-            print("No companies found containing the keyword")
+            print("No companies found containing keywords")
             return None
 
         # Print all matching company names
-        print("🔍 Found the following companies containing the keyword:")
+        print("🔍 Found companies containing keywords:")
         for c in filtered_companies:
             print(f" - {c['name']}")
 
         company_names = [c['name'] for c in filtered_companies]
 
-        # Build normalized mapping
+        # Create conversion mapping table
         normalized_map = {}
         for c in wikirate_companies:
             original_name = c['name'] if isinstance(c, dict) else c
@@ -174,7 +182,7 @@ class WikirateClient:
             return None
 
         # Print all matched names and scores
-        print("All match results:")
+        print("All matching results:")
         results = []
         for i in range(5):
             match_name_col = f'match_name_{i}'
@@ -195,28 +203,32 @@ class WikirateClient:
         max_score = max(score for _, score in results)
         top_matches = [name for name, score in results if score == max_score]
 
-        # If only one top score → return original name
+        # If only one highest score → return original name
         if len(top_matches) == 1:
             return normalized_map.get(top_matches[0], {}).get('original_name', top_matches[0])
 
-        # If multiple top scores → select by ISIN count
+        # If multiple highest scores → select by isin_count
         best_match = max(top_matches, key=lambda name: normalized_map.get(name, {}).get('isin_count', 0))
         return normalized_map.get(best_match, {}).get('original_name', best_match)
 
     def get_company_metrics(self, company_name: str) -> Dict[str, Any]:
-        """Get company's ESG metrics data using wikirate4py API"""
+        """Get company ESG metrics data using wikirate4py API"""
         try:
             from wikirate4py import API
 
+            # Initialize wikirate4py API
             api = API(self.api_key)
+
+            # Get company info
             company = api.get_company(company_name)
             if not company:
                 return {"error": f"Company '{company_name}' not found"}
 
+            # Paginate to get all answers
             all_answers = []
             limit = 10
             offset = 0
-            max_total = 20  # Get up to 20 records
+            max_total = 20  # Max 200 records to fetch
 
             while len(all_answers) < max_total:
                 batch = api.get_answers(company=company.name, limit=min(limit, max_total - len(all_answers)), offset=offset)
@@ -227,10 +239,12 @@ class WikirateClient:
                     break
                 offset += limit
 
+            # Filter ESG-related metrics
             esg_topics = ["environment", "social", "governance"]
             esg_metrics = set()
             metric_cache = {}
 
+            # Get ESG topics and unit info for all metrics
             for answer in all_answers:
                 metric_name = answer.metric
                 if metric_name in metric_cache:
@@ -246,6 +260,8 @@ class WikirateClient:
                                 topics.append(t.lower())
                             elif isinstance(t, dict) and 'name' in t:
                                 topics.append(t['name'].lower())
+
+                        # Get unit info
                         unit = getattr(metric_obj, 'unit', None)
                         metric_cache[metric_name] = {
                             'topics': topics,
@@ -263,6 +279,7 @@ class WikirateClient:
                 if any(topic in topics for topic in esg_topics):
                     esg_metrics.add(metric_name)
 
+            # Build return result
             results = {
                 "company_name": company_name,
                 "total_answers": len(all_answers),
@@ -270,6 +287,7 @@ class WikirateClient:
                 "esg_data": []
             }
 
+            # Extract ESG-related metric data
             for answer in all_answers:
                 if answer.metric in esg_metrics:
                     record = {
@@ -287,7 +305,7 @@ class WikirateClient:
             return {"error": str(e)}
 
     def get_metric_details(self, metric_name: str) -> Dict[str, Any]:
-        """Get detailed information and definition of a metric"""
+        """Get metric details and definitions"""
         try:
             url = f"{self.base_url}/{metric_name}.json"
             response = self.session.get(url, timeout=10)
@@ -302,7 +320,7 @@ class WikirateClient:
             return {}
 
 
-# Wikirate Validation Tool
+# Wikirate validation tools
 class WikirateValidationTool(BaseTool):
     name: str = "wikirate_validation"
     description: str = "Validates ESG metrics and claims against Wikirate database"
@@ -317,11 +335,20 @@ class WikirateValidationTool(BaseTool):
     def _run(self, extracted_metrics: str) -> str:
         """Validate extracted ESG metrics against Wikirate database"""
         try:
-            # Perform fuzzy match by input name and select the best match based on ISIN count
+            # validation_results = {
+            #     "company_found": False,
+            #     "metrics_verified": {},
+            #     "discrepancies": [],
+            #     "verification_score": 0.0
+            # }
+
+            # Fuzzy match input name and select best match by ISIN count
             self.company_name = self.wikirate_client.find_best_matching_company(self.company_name)
 
             if self.company_name:
-                # Get company's ESG metrics
+                # validation_results["company_found"] = True
+
+                # Get company ESG metrics
                 metrics_data = self.wikirate_client.get_company_metrics(self.company_name)
 
                 if "error" not in metrics_data:
@@ -352,6 +379,29 @@ class WikirateValidationTool(BaseTool):
                     response = llm.invoke([HumanMessage(content=analysis_prompt)])
 
                     return response.content
+
+
+                    # # Extract validation score
+                    # verification_text = response.content
+                    #
+                    # # Simple score extraction logic (can be improved)
+                    # if "verification score" in verification_text.lower():
+                    #     import re
+                    #     score_match = re.search(r'(\d+)(?:/100|\%)', verification_text)
+                    #     if score_match:
+                    #         validation_results["verification_score"] = float(score_match.group(1))
+                    #
+                    # return f"""
+                    # Wikirate Validation Results:
+                    #
+                    # Company Found: {validation_results['company_found']}
+                    # Verification Score: {validation_results['verification_score']}
+                    #
+                    # Detailed Analysis:
+                    # {verification_text}
+                    #
+                    # Raw Wikirate Data Available: {len(metrics_data)} metrics found
+                    # """
 
                 else:
                     return f"Company found in Wikirate but no ESG metrics available: {metrics_data['error']}"
@@ -401,15 +451,20 @@ class ESGDocumentAnalysisTool(BaseTool):
             response = llm.invoke([HumanMessage(content=analysis_prompt)])
             raw_llm_content = response.content
 
-            # Remove potential Markdown code block wrappers
+            # Use regex to remove potential Markdown code block wrappers
+            # Matches starting ```json\n and ending ``` (possibly \n```)
             cleaned_llm_content = re.sub(r'```json\n(.*)```', r'\1', raw_llm_content, flags=re.DOTALL)
+            # Further clean cases where only ```json and ``` remain
             cleaned_llm_content = cleaned_llm_content.replace('```json', '').replace('```', '').strip()
             try:
+                # Try parsing LLM's JSON string response to Python list
                 parsed_json_response = json.loads(cleaned_llm_content)
 
+                # Ensure parsed result is actually a list
                 if isinstance(parsed_json_response, list):
-                    return parsed_json_response
+                    return parsed_json_response  # <-- Return parsed list directly
                 else:
+                    # If LLM didn't return list but other JSON type (e.g. single object), can error or handle as needed
                     return [
                         {
                             "quotation": "",
@@ -418,9 +473,10 @@ class ESGDocumentAnalysisTool(BaseTool):
                             "verification_method": "",
                             "data_needed": ""
                         }
-                    ]
+                    ]  # Return a list containing error info
 
             except json.JSONDecodeError as json_e:
+                # If LLM didn't return valid JSON, catch error
                 return [
                     {
                         "quotation": "",
@@ -429,9 +485,10 @@ class ESGDocumentAnalysisTool(BaseTool):
                         "verification_method": "",
                         "data_needed": ""
                     }
-                ]
+                ]  # Return a list containing error info
 
         except Exception as e:
+            # Catch any other exceptions
             return [
                 {
                     "quotation": "",
@@ -440,7 +497,7 @@ class ESGDocumentAnalysisTool(BaseTool):
                     "verification_method": "",
                     "data_needed": ""
                 }
-            ]
+            ]  # Return a list containing error info
 
 
 
@@ -455,14 +512,14 @@ class NewsValidationTool(BaseTool):
 
     def _run(self, claims: str) -> str:
         try:
-            # 👇 Modification: make the search function return content + titles
+            # 👇 Modified: Make search function return content + title
             news_content, used_titles = search_and_filter_news(self.company_name, max_articles=10)
 
             if not news_content:
                 return "No relevant news articles found for this company"
 
-            # Print the news titles used
-            print("[ Used News Articles]")
+            # Print used news titles
+            print("[ News articles used ]")
             for idx, title in enumerate(used_titles, start=1):
                 print(f"{idx}. {title}")
 
@@ -537,11 +594,8 @@ class ESGMetricsCalculatorTool(BaseTool):
             """
             response = llm.invoke([HumanMessage(content=metrics_prompt)])
             raw = (response.content or "").strip()
-
-            # Remove ```json/``` fence
             clean = raw.replace("```json", "").replace("```", "").strip()
 
-            # Parse JSON; if it fails, return a zero-score skeleton to avoid frontend crash
             import json
             try:
                 data = json.loads(clean)
@@ -558,6 +612,41 @@ class ESGMetricsCalculatorTool(BaseTool):
                     "_raw_failed_to_parse": raw[:500]
                 }
 
+            translations = {
+                "Vague or unsubstantiated claims": {
+                    "de": "Vage oder unbegründete Behauptungen",
+                    "it": "Affermazioni vaghe o non comprovate",
+                },
+                "Lack of specific metrics or targets": {
+                    "de": "Mangel an spezifischen Kennzahlen oder Zielen",
+                    "it": "Mancanza di metriche o obiettivi specifici",
+                },
+                "Misleading terminology": {
+                    "de": "Irreführende Terminologie",
+                    "it": "Terminologia fuorviante",
+                },
+                "Cherry-picked data": {
+                    "de": "Ausgewählte Daten",
+                    "it": "Dati selezionati",
+                },
+                "Absence of third-party verification": {
+                    "de": "Fehlende unabhängige Überprüfung",
+                    "it": "Assenza di verifica indipendente",
+                },
+                "overall_greenwashing_score": {
+                    "de": "Gesamt-Greenwashing-Score",
+                    "it": "Punteggio complessivo di greenwashing",
+                }
+            }
+
+            for k, v in data.items():
+                if isinstance(v, dict):
+                    v.setdefault("type_i18n", {
+                        "en": k,
+                        "de": translations.get(k, {}).get("de", k),
+                        "it": translations.get(k, {}).get("it", k),
+                    })
+
             return data
 
         except Exception as e:
@@ -570,5 +659,4 @@ class ESGMetricsCalculatorTool(BaseTool):
                 "overall_greenwashing_score": {"score": 0},
                 "_error": f"Error calculating metrics: {str(e)}"
             }
-
 

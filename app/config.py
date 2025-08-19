@@ -2,12 +2,10 @@ import os
 from pathlib import Path
 import pandas as pd
 from dotenv import load_dotenv
-from sqlalchemy.ext.declarative import declarative_base
+from app.models.base import Base
+from app.models import ESGAnalysisResult, ESGAnalysisState, ChatBaseMessage, ChatMessage, Conversation
 
-# SQLAlchemy Base class
-Base = declarative_base()
-
-# Environment variable loading
+# Load environment variables
 load_dotenv()
 
 # Environment variables
@@ -21,15 +19,17 @@ GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
 
 # Paths
-BASE_PATH = Path(__file__).parent.parent  # Point to project root directory
-UPLOAD_DIR = BASE_PATH / "uploads"   # Directory for saving uploaded files
-REPORT_DIR = BASE_PATH / "reports"   # Directory for saving report files
+BASE_PATH = Path(__file__).parent.parent  # Points to project root
+UPLOAD_DIR = BASE_PATH / "uploads"   # Directory for uploaded files
+REPORT_DIR = BASE_PATH / "reports"   # Directory for report files
 DB_PATH = BASE_PATH / "data/reports.db"  # SQLite database path
 COMPANIES_PATH = BASE_PATH / "data_files/companies.csv"    # Company whitelist CSV file path
+VECTOR_STORE_DIR = BASE_PATH / "data/vector_stores"  # Directory for vector store persistence
 
 # Ensure directories exist
 REPORT_DIR.mkdir(parents=True, exist_ok=True)
 DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+VECTOR_STORE_DIR.mkdir(parents=True, exist_ok=True)
 
 # Load valid companies
 if COMPANIES_PATH.exists():
@@ -38,7 +38,7 @@ if COMPANIES_PATH.exists():
 else:
     VALID_COMPANIES = []
 
-# Restrict upload file types (only allow PDF)
+# Restrict upload file types (PDF only)
 VALID_UPLOAD_TYPES = ["application/pdf"] 
 
 # Database connection URL
