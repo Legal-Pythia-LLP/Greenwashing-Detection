@@ -150,7 +150,7 @@ const Upload = () => {
               aria-label={t('upload.selectFile')}
             >
               <p className="mb-3">{t('upload.selectFile')}</p>
-              <Input type="file" accept=".pdf,.doc,.docx" multiple onChange={(e) => onFiles(e.target.files)} />
+              <Input type="file" accept=".pdf,image/*" multiple onChange={(e) => onFiles(e.target.files)} />
             </div>
 
             <Separator className="my-6" />

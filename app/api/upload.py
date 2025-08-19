@@ -9,7 +9,7 @@ from app.core.esg_analysis import agent_executors
     # Global dictionary to store analysis results
 analysis_results_by_session = defaultdict(dict)
 from app.core.utils import hash_file,translate_text
-from app.core.document import process_pdf_document
+from app.core.document import process_pdf_document, process_ocr_text
 from app.core.vector_store import embedding_model
 from app.config import UPLOAD_DIR, REPORT_DIR, VALID_UPLOAD_TYPES, VALID_COMPANIES
 from app.core.llm import llm
@@ -23,6 +23,14 @@ from langchain.schema import HumanMessage
 import uuid
 from PyPDF2 import PdfReader
 from langdetect import detect, DetectorFactory
+from PIL import Image
+import io
+from app.core.ocr_service import ocr_service
+from langchain_community.vectorstores import Chroma
+
+IMAGE_UPLOAD_TYPES = {
+    "image/png", "image/jpeg", "image/jpg", "image/webp", "image/tiff", "image/bmp"
+}
 
 def _get_main_risk_type(analysis_results: Dict[str, Any]) -> str:
     """Extract main risk type from analysis results"""
@@ -64,20 +72,30 @@ async def upload_document(
         session_id = f"s_{uuid.uuid4().hex[:16]}"
         print(f"[SESSION DEBUG] Generated new session ID: {session_id}")
 
-    # Validate file type
-    if file.content_type not in VALID_UPLOAD_TYPES:
+    # --- Content-Type whitelist (PDF or images only) ---
+    if (file.content_type not in VALID_UPLOAD_TYPES) and (file.content_type not in IMAGE_UPLOAD_TYPES):
+        # DEBUG: print the received content-type to locate mismatches
+        print(f"[DEBUG] Rejected content-type: {file.content_type}")
         raise HTTPException(status_code=400, detail="Invalid content type")
-    
-    # Validate file size (limit 50MB)
-    if file.size > 50 * 1024 * 1024:
+
+    # --- Read the file ONCE and reuse the buffer everywhere ---
+    # NOTE: UploadFile has no `.size` attribute by default; always read and check length.
+    file_b = await file.read()
+    if len(file_b) > 50 * 1024 * 1024:  # 50MB
         raise HTTPException(status_code=400, detail="File too large. Maximum size is 50MB")
-    
-    # Validate filename
-    if not file.filename or not file.filename.lower().endswith('.pdf'):
-        raise HTTPException(status_code=400, detail="Invalid filename. Must be a PDF file")
+
+    # --- Filename / extension guards ---
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
+    lower_name = file.filename.lower()
+    is_pdf = lower_name.endswith(".pdf")
+    is_image = lower_name.endswith((".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff", ".bmp"))
+    if not (is_pdf or is_image):
+        raise HTTPException(status_code=400, detail="Invalid filename. Must be a PDF or image file")
 
     # Save PDF file to reports directory in {original_name}_{timestamp} format
-    file_b = await file.read()
+    # file_b = await file.read()
     file_hash = hash_file(file_b)
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     
@@ -88,10 +106,22 @@ async def upload_document(
     original_name = Path(file.filename).stem  # Get filename without extension
     safe_name = re.sub(r'[^\w\-_]', '_', original_name)  # Replace special chars
     analysis_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-    file_path = REPORT_DIR / f"{safe_name}_{analysis_time}.pdf"
-    
+
+    # original image path (only used when the upload is an image)
+    suffix = Path(file.filename).suffix.lower()
+    file_path = REPORT_DIR / f"{safe_name}_{analysis_time}{suffix}"
+
+    # --- Build vector store (OCR for image, chunking for PDF) ---
+    # 1) Save original file
     with file_path.open("wb") as f:
         f.write(file_b)
+
+    if is_image:
+    # 2) OCR MUST run on the image path (NOT a PDF)
+        ocr_out = ocr_service.read(str(file_path), mode="smart")
+        ocr_text = (ocr_out.get("cleaned_text") or ocr_out.get("full_text") or "").strip()
+        if not ocr_text:
+            raise HTTPException(status_code=400, detail="The uploaded image contains no recognizable text for analysis.")
 
     # Ensure report_file exists
     report_file = db.query(ReportFile).filter_by(file_hash=file_hash).first()
@@ -132,14 +162,18 @@ async def upload_document(
 
     # 🔍 Detect PDF language
     try:
-        reader = PdfReader(str(file_path))
         sample_text = ''
-        for page in reader.pages:
-            text = page.extract_text()
-            if text:
-                sample_text += text
-            if len(sample_text) > 1000:
-                break
+        if is_pdf:
+            reader = PdfReader(str(file_path))
+            for page in reader.pages:
+                text = page.extract_text()
+                if text:
+                    sample_text += text
+                if len(sample_text) > 1000:
+                    break
+        else:
+            sample_text = ocr_text
+            print("sample_text", sample_text)
         detected_language = detect(sample_text[:2000]) if sample_text.strip() else "unknown"
     except Exception as e:
         print(f"[Warning] Language detection failed: {e}")
@@ -150,7 +184,11 @@ async def upload_document(
         
         # Parse and split document
         print(f"[INFO] Processing PDF document...")
-        chunks = await process_pdf_document(str(file_path))
+        chunks = 0
+        if is_pdf:
+            chunks = await process_pdf_document(str(file_path))
+        else:
+            chunks = await process_ocr_text(ocr_text)
         print(f"[INFO] Document processed, created {len(chunks)} chunks")
 
         # Create and persist vector index

@@ -12,7 +12,11 @@ interface Message {
   content: string;
 }
 
-export function FloatingChatbot() {
+interface FloatingChatbotProps {
+  sessionId?: string;
+}
+
+export function FloatingChatbot({ sessionId }: FloatingChatbotProps) {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -37,8 +41,9 @@ export function FloatingChatbot() {
     const loadHistory = async () => {
       setIsInitializing(true);
       try {
-        const lastSessionId = localStorage.getItem("lastSessionId");
-        if (!lastSessionId) {
+        // Prefer using the provided sessionId, otherwise use lastSessionId from localStorage
+        const targetSessionId = sessionId || localStorage.getItem("lastSessionId");
+        if (!targetSessionId) {
           setMessages([
             {
               role: "assistant",
@@ -48,13 +53,13 @@ export function FloatingChatbot() {
           return;
         }
 
-        const history = await APIService.getConversation(lastSessionId);
+        const history = await APIService.getConversation(targetSessionId);
         if (history?.messages?.length > 0) {
           setMessages(
             history.messages
               .filter(
                 (msg: any) => msg.sender === "user" || msg.sender === "assistant"
-              ) // 🚀 过滤掉 system
+              ) // 🚀 filter out system messages
               .map((msg: any) => ({
                 role: msg.sender as "user" | "assistant",
                 content: msg.content,
@@ -82,7 +87,7 @@ export function FloatingChatbot() {
     };
 
     loadHistory();
-  }, [isOpen, t]);
+  }, [isOpen, t, sessionId]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [input, setInput] = useState("");
@@ -105,12 +110,13 @@ export function FloatingChatbot() {
     setIsLoading(true);
 
     try {
-      const lastSessionId = localStorage.getItem("lastSessionId");
+      // Prefer using the provided sessionId, otherwise use lastSessionId from localStorage
+      const targetSessionId = sessionId || localStorage.getItem("lastSessionId");
 
       try {
         const response = await APIService.sendChatMessage(
           userMessage,
-          lastSessionId || "global_chat"
+          targetSessionId || "global_chat"
         );
         setMessages((prev) => [
           ...prev,
@@ -143,23 +149,23 @@ export function FloatingChatbot() {
   const generateSmartReply = (question: string) => {
     const q = question.toLowerCase();
 
-    if (q.includes("公司") && q.includes("风险")) {
+    if (q.includes("company") && q.includes("risk")) {
       return "Based on analyzed company reports, high-risk companies mainly have the following issues: 1) Excessive vague statements 2) Lack of quantitative metrics 3) Insufficient third-party verification. Focus on these aspects.";
     }
 
-    if (q.includes("漂绿") || q.includes("greenwash")) {
+    if (q.includes("greenwash") || q.includes("greenwashing")) {
       return "Greenwashing detection focuses on five dimensions: vague statements, lack of metrics, misleading terms, insufficient third-party verification, and unclear scope. Each dimension is scored 0-100 to assess greenwashing risk.";
     }
 
-    if (q.includes("报告") && (q.includes("上传") || q.includes("分析"))) {
+    if (q.includes("report") && (q.includes("upload") || q.includes("analyze"))) {
       return "You can submit ESG reports on the upload page for analysis. The system will automatically extract key statements, assess risks, and generate a detailed greenwashing analysis report.";
     }
 
-    if (q.includes("评分") || q.includes("分数")) {
+    if (q.includes("score") || q.includes("rating")) {
       return "The scoring system uses a 0-100 scale, with scores above 70 considered high risk. Scores are based on AI analysis combined with external verification, including news and Wikirate database checks.";
     }
 
-    if (q.includes("建议") || q.includes("recommendation")) {
+    if (q.includes("recommendation")) {
       return "Based on the analysis, recommendations include: 1) Increase specific quantitative targets 2) Provide third-party certifications 3) Clearly disclose scope and boundaries 4) Avoid vague statements 5) Regularly update data and maintain transparency.";
     }
 

@@ -1,5 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -136,6 +137,17 @@ const Company = () => {
   const { t, i18n } = useTranslation();
   const { id } = useParams();
   const mockData = (mock as any)[id ?? "acme"] ?? (mock as any).acme;
+
+  // Ensure lastSessionId in localStorage is consistent with the currently viewed session_id
+  useEffect(() => {
+    if (id) {
+      try {
+        localStorage.setItem("lastSessionId", id);
+      } catch (error) {
+        console.error("Failed to update lastSessionId in localStorage:", error);
+      }
+    }
+  }, [id]);
 
   const { data: apiRes } = useQuery({
     queryKey: ["report", id],
@@ -574,7 +586,7 @@ return (
         </div>
       </section>
     </main>
-    <FloatingChatbot />
+    <FloatingChatbot sessionId={id} />
   </div>
 );
 

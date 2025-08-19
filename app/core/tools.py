@@ -125,7 +125,7 @@ class WikirateClient:
         # self.parallel_fetch(num_workers=6)
 
         # Load company data
-        csv_path = "wikirate_companies_all.csv"
+        csv_path = "data_files\wikirate_companies_all.csv"
         wikirate_companies = []
 
         try:
