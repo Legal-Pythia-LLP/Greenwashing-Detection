@@ -32,11 +32,6 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### Database Initialization
-```bash
-python -m app.init_db
-```
-
 ### Start Service
 ```bash
 # Development mode
