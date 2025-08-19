@@ -3,7 +3,6 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from app.config import AZURE_OPENAI_ENDPOINT_2, AZURE_OPENAI_API_KEY_2, GOOGLE_API_KEY
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
-
 # Updated embedding model initialization
 # embedding_model = AzureOpenAIEmbeddings(
 #     azure_endpoint=AZURE_OPENAI_ENDPOINT_2,

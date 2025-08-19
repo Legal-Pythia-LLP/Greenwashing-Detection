@@ -156,7 +156,7 @@ def search_and_filter_news(company_name: str, max_articles: int = 5) -> Tuple[Li
                     print(f"[❌ Remove] {title} 👉 Company match: {'YES' if is_company else 'NO'}, ESG related: {'YES' if is_esg else 'NO'}")
 
         except Exception as e:
-            print(f"[⚠️ Error loading article: {title}]: {e}")
+            print(f"[Error loading article: {title}]: {e}")
 
     # Only take first N articles for further analysis
     top_articles = filtered_articles[:max_articles]
