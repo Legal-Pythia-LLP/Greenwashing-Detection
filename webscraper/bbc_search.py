@@ -72,7 +72,7 @@ def date_conversion(date: str) -> datetime:
             return datetime.now() - timedelta(hours=int(components[0]))
     else:
         month = datetime.strptime(components[1], "%B").month
-        if len(components) == 2:  # e.g., ['30','October']
+        if len(components) == 2:  # e.g. ['30','October']
             return datetime(datetime.now().year, month, int(components[0]))
         else:  # e.g. ['30','October','2021']
             return datetime(int(components[2]), month, int(components[0]))
@@ -134,6 +134,7 @@ def bbc_search(name: str) -> Dict[str, str]:
             next_page = False
         else:
             page_count += 1
+   
             if page_count > 10:
                 break
 

@@ -263,6 +263,7 @@ class WikirateClient:
 
                         # Get unit info
                         unit = getattr(metric_obj, 'unit', None)
+
                         metric_cache[metric_name] = {
                             'topics': topics,
                             'unit': unit
@@ -295,6 +296,9 @@ class WikirateClient:
                         "year": getattr(answer, 'year', None),
                         "value": getattr(answer, 'value', None),
                         "unit": metric_cache.get(answer.metric, {}).get('unit'),
+                        # "comments": getattr(answer, 'comments', None),
+                        # "source": getattr(answer, 'source', None),
+                        # "topics": metric_cache.get(answer.metric, {}).get('topics', [])
                     }
                     results["esg_data"].append(record)
 
@@ -352,6 +356,9 @@ class WikirateValidationTool(BaseTool):
                 metrics_data = self.wikirate_client.get_company_metrics(self.company_name)
 
                 if "error" not in metrics_data:
+                    # validation_results["metrics_verified"] = metrics_data
+
+
                     analysis_prompt = f"""
                     You are an expert ESG validation analyst. 
 
@@ -449,6 +456,7 @@ class ESGDocumentAnalysisTool(BaseTool):
             """
 
             response = llm.invoke([HumanMessage(content=analysis_prompt)])
+            # return response.content
             raw_llm_content = response.content
 
             # Use regex to remove potential Markdown code block wrappers
@@ -541,7 +549,7 @@ class NewsValidationTool(BaseTool):
             - If the provided news_text is unrelated to the quote and cannot be evaluated in any way, please mark it as “Not Mentioned.”
 
             ---
-
+            
             Claims:
             {claims}
 
@@ -553,6 +561,7 @@ class NewsValidationTool(BaseTool):
             2. **Reasoning**: Explain why you chose this status  
             3. **news_quotation**: Include any relevant quotation from news_text if applicable  
             """
+
 
             response = llm.invoke([HumanMessage(content=validation_prompt)])
             return response.content

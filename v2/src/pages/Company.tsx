@@ -136,6 +136,7 @@ const riskTone = (score: number) => {
 const Company = () => {
   const { t, i18n } = useTranslation();
   const { id } = useParams();
+  const mockData = (mock as any)[id ?? "acme"] ?? (mock as any).acme;
 
   // Ensure lastSessionId in localStorage is consistent with the currently viewed session_id
   useEffect(() => {
@@ -213,7 +214,6 @@ function sanitizeSynthesis(text: string): string {
         evidenceGroups: d.evidence ?? [],
         final_synthesis: d.final_synthesis ?? d.response ?? "",
         external: d.external ?? [],
-        recommendedSteps: extractSection(d.final_synthesis ?? d.response ?? "", 5) ?? ""
       };
     } catch {
       return null;
@@ -239,18 +239,9 @@ const view = apiRes?.data
                 cleanData = cleanData.replace(/^\s*{\s*/, '{').replace(/\s*}\s*$/, '}');
                 graphdata = JSON.parse(cleanData);
               }
-              const overallScore = graphdata.overall_greenwashing_score?.score ?? 0;
-              return Math.round(overallScore * 10);
             }
-            return Math.round(apiRes.data.overall_score ?? 0);
-          } catch (e) { console.error('Failed to parse graphdata:', e); return Math.round(apiRes.data.overall_score ?? 0); }
-        })(),
-        summary: (() => {
-          if (apiRes.data.final_synthesis) {
-            const synthesis = apiRes.data.final_synthesis;
-            const execSummaryMatch = synthesis.match(/\*\*1\. Executive Summary\*\*([\s\S]*?)(?=\n\n\*\*2\.)/);
-            if (execSummaryMatch) return execSummaryMatch[1].trim();
-            return synthesis.substring(0, 200) + "...";
+            const overallScore = graphdata.overall_greenwashing_score?.score ?? 0;
+            return Math.round(overallScore * 10);
           }
           return Math.round(apiRes.data.overall_score ?? 0);
         } catch (e) {
@@ -277,9 +268,6 @@ const view = apiRes?.data
                 cleanData = cleanData.replace(/^\s*{\s*/, '{').replace(/\s*}\s*$/, '}');
                 graphdata = JSON.parse(cleanData);
               }
-              return Object.entries(graphdata)
-                .filter(([key]) => key !== 'overall_greenwashing_score')
-                .map(([key, value]: [string, any]) => ({ type: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), value: Math.round((value?.score ?? 0) * 10) }));
             }
 
             const lang = (i18next.language || "en").slice(0, 2);
@@ -602,38 +590,5 @@ return (
   </div>
 );
 
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>3.Specific Recommendations for Stakeholders</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {Array.isArray(view?.external) && view.external.length > 0 ? (
-                  <div className="whitespace-pre-line">{view.external[0]}</div>
-                ) : (
-                  <div className="text-center py-4 text-muted-foreground"><p>No report content</p></div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card id="actions">
-              <CardHeader>
-                <CardTitle>4.Risk Assessment and Concerns</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {view.recommendedSteps ? <div className="whitespace-pre-line">{view.recommendedSteps}</div> : <p>No recommendations</p>}
-                <div className="mt-4 flex gap-2">
-                  <Button asChild><Link to="/upload">{t('company.addReports')}</Link></Button>
-                  <Button variant="secondary">{t('company.exportPdf')}</Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
-      </main>
-      <FloatingChatbot />
-    </div>
-  );
 }
-
 export default Company;

@@ -39,7 +39,6 @@ const Index = () => {
       try {
         setLoading(true);
         const data = await APIService.getDashboardData();
-
         if (data) {
           setStats(data.stats || null);
           
@@ -97,7 +96,6 @@ const Index = () => {
         </header>
 
         <section aria-labelledby="metrics" className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-          {/* High Risk Companies */}
           <Card className="hover:shadow-xl transition-all duration-300 border-0 [box-shadow:var(--shadow-elevated)]">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -117,8 +115,7 @@ const Index = () => {
               )}
             </CardContent>
           </Card>
-
-          {/* Pending Reports */}
+          
           <Card className="hover:shadow-xl transition-all duration-300 border-0 [box-shadow:var(--shadow-elevated)]">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -139,8 +136,7 @@ const Index = () => {
               )}
             </CardContent>
           </Card>
-
-          {/* Risk Trend */}
+          
           <Card className="hover:shadow-xl transition-all duration-300 border-0 [box-shadow:var(--shadow-elevated)]">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">{t('dashboard.riskTrend')}</CardTitle>
@@ -152,18 +148,18 @@ const Index = () => {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="date" hide />
                   <YAxis hide />
-                  <Tooltip
+                  <Tooltip 
                     contentStyle={{
                       backgroundColor: 'hsl(var(--card))',
                       border: '1px solid hsl(var(--border))',
                       borderRadius: '8px'
                     }}
                   />
-                  <Line
-                    type="monotone"
-                    dataKey="risks"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={3}
+                  <Line 
+                    type="monotone" 
+                    dataKey="risks" 
+                    stroke="hsl(var(--primary))" 
+                    strokeWidth={3} 
                     dot={{ fill: 'hsl(var(--accent))', strokeWidth: 2, r: 4 }}
                   />
                   </LineChart>
@@ -177,7 +173,6 @@ const Index = () => {
           </Card>
         </section>
 
-        {/* Company Ranking Table */}
         <section aria-labelledby="ranking">
           <div className="flex items-center justify-between mb-6">
             <h2 id="ranking" className="text-2xl font-semibold">{t('dashboard.companyRanking')}</h2>
@@ -188,7 +183,7 @@ const Index = () => {
               </Link>
             </Button>
           </div>
-
+          
           <Card className="border-0 [box-shadow:var(--shadow-elevated)]">
             <CardContent className="p-0">
               <Table>
@@ -208,30 +203,28 @@ const Index = () => {
                         {t('dashboard.loading')}
                       </TableCell>
                     </TableRow>
-                  ) : companies.length > 0 ? (
+                  ) : companies && companies.length > 0 ? (
                     companies.map((c) => (
-                      <TableRow key={c.id} className="hover:bg-muted/50 transition-colors">
-                        <TableCell className="font-medium py-4">{c.name}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={riskColor(c.score) as any}
-                            className="px-3 py-1 text-sm font-semibold"
-                          >
-                            {c.score}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {t(`greenwashingTypes.${c.type}`) ?? c.type}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{c.date}</TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="secondary" asChild className="hover:shadow-md">
-                            <Link to={`/company/${c.id}`} aria-label={t('dashboard.viewAnalysis', { company: c.name })}>
-                              {t('dashboard.viewDetails')}
-                            </Link>
-                          </Button>
-                        </TableCell>
-                      </TableRow>
+                    <TableRow key={c.id} className="hover:bg-muted/50 transition-colors">
+                      <TableCell className="font-medium py-4">{c.name}</TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={riskColor(c.score) as any}
+                          className="px-3 py-1 text-sm font-semibold"
+                        >
+                          {c.score}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{t(`greenwashingTypes.${c.type}`)}</TableCell>
+                      <TableCell className="text-muted-foreground">{c.date}</TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="secondary" asChild className="hover:shadow-md">
+                          <Link to={`/company/${c.id}`} aria-label={t('dashboard.viewAnalysis', { company: c.name })}>
+                            {t('dashboard.viewDetails')}
+                          </Link>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
                     ))
                   ) : (
                     <TableRow>
@@ -246,7 +239,7 @@ const Index = () => {
           </Card>
         </section>
       </main>
-
+      
       <FloatingChatbot />
     </div>
   );
