@@ -9,7 +9,7 @@ async def process_pdf_document(file_path: str) -> List[Document]:
     """Process PDF document and return chunks"""
     loader = PyPDFLoader(file_path)
     documents = loader.load()
-    # Filter ESG-related content and add to list
+    # Filter ESG-related content   add to list
     esg_documents = []
     for doc in documents:
         if is_esg_related(doc.page_content):
