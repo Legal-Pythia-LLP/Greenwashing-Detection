@@ -1,11 +1,11 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
 
+backend/.venv
+backend/tests/
+backend/data/vector_stores/
+backend/data/reports/
+backend/data/downloads/
+backend/data/reports.db
 
-venv/
-downloads/
-v2/node_modules/
-reports/
-tests/
-data/vector_stores/
-data/reports.db
+frontend/v2/node_modules

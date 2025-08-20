@@ -1,0 +1,38 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "beautifulsoup4>=4.13.4",
+    "chromadb>=1.0.20",
+    "cloudscraper>=1.2.71",
+    "fastapi>=0.116.1",
+    "langchain>=0.3.27",
+    "langchain-community>=0.3.27",
+    "langchain-google-genai>=2.1.9",
+    "langchain-openai>=0.3.30",
+    "langdetect>=1.0.9",
+    "langgraph>=0.6.5",
+    "name-matching>=0.8.12",
+    "onnxruntime>=1.22.1",
+    "pandas>=2.3.1",
+    "pillow>=11.3.0",
+    "pypdf>=6.0.0",
+    "pypdf2>=3.0.1",
+    "pyspellchecker>=0.8.3",
+    "python-dotenv>=1.1.1",
+    "python-multipart>=0.0.20",
+    "rapidocr>=3.3.1",
+    "requests>=2.32.5",
+    "selenium>=4.35.0",
+    "sqlalchemy>=2.0.43",
+    "starlette>=0.47.2",
+    "torch>=2.8.0",
+    "transformers>=4.55.2",
+    "unstructured>=0.18.13",
+    "uvicorn>=0.35.0",
+    "wikirate4py>=2.0.4",
+    "wordninja>=2.0.0",
+]
