@@ -1,4 +1,4 @@
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from app.core.tools import (
     ESGDocumentAnalysisTool,
     NewsValidationTool,
@@ -14,10 +14,11 @@ from langchain_community.vectorstores import Chroma
 from langchain.agents import AgentExecutor
 from langchain.memory import ConversationBufferWindowMemory
 from langchain.tools import Tool
-import re
-import json
+import os, json
 from app.core.utils import is_esg_related
 from app.core.company import extract_company_info
+from app.core.metrics_tools import get_metrics_tool
+from app.core.metrics_tools.schema_utils import ensure_unified_metrics_schema as _ensure_unified_metrics_schema
 
 # Global object cache
 document_stores: Dict[str, Chroma] = {}
@@ -121,7 +122,7 @@ def perform_document_analysis(state: ESGAnalysisState) -> ESGAnalysisState:
         return state
 
     vector_store = state.get("vector_store")
-    selected_thoughts = state.get("initial_thoughts", [])
+    selected_thoughts = state.get("selected_thoughts") or state.get("initial_thoughts", [])
 
 
     if not vector_store:
@@ -132,13 +133,37 @@ def perform_document_analysis(state: ESGAnalysisState) -> ESGAnalysisState:
         analysis_tool = ESGDocumentAnalysisTool(vector_store)
         analysis_results = []
 
+        def as_text(x):
+            if isinstance(x, dict):
+                return json.dumps(x, ensure_ascii=False)
+            return str(x)
+
         for thought in selected_thoughts:
-            query = f"Analyze the document using this approach: {thought}"
-            result = analysis_tool._run(query)
+            query = (
+                "Analyze the document using this approach:\n"
+                f"{as_text(thought)}\nReturn concise bullet points."
+            )
+            ok = False
+            try:
+                result = analysis_tool._run(query)
+                if not isinstance(result, str):
+                    result = json.dumps(result, ensure_ascii=False)
+                
+                if "[ERROR" in result or "list object has no attribute 'replace'" in result:
+                    raise RuntimeError("downstream returned error text")
+                ok = True
+            except Exception as e:
+                
+                docs = vector_store.similarity_search(
+                    "ESG claims, targets, metrics, offsets, scope 1/2/3, carbon neutral, PAS 2060, REC, GO, ISAE 3000",
+                    k=8
+                )
+                result = "\n".join(getattr(d, "page_content", "") for d in docs if getattr(d, "page_content", ""))
+                result = result or f"[fallback-no-content due to {e}]"
+
             analysis_results.append(result)
 
         state["document_analysis"] = analysis_results
-    
         return state
 
     except Exception as e:
@@ -346,24 +371,78 @@ def validate_each_quotation_independently(state: ESGAnalysisState) -> ESGAnalysi
     state["validations"] = validated
     return state
 
+import os, json
+from app.core.metrics_tools import get_metrics_tool
+from app.core.metrics_tools.schema_utils import ensure_unified_metrics_schema as _ensure_unified_metrics_schema
+
+def _pad_five_dimensions(m: dict) -> dict:
+    """Ensure both `breakdown` and `radar` always contain all 5 dimensions; fill missing ones with 0."""
+    wanted = [
+        ("Vague or unsubstantiated claims", "vague"),
+        ("Lack of specific metrics or targets", "lack_metrics"),
+        ("Misleading terminology", "misleading"),
+        ("Cherry-picked data", "cherry"),
+        ("Absence of third-party verification", "no_3rd"),
+    ]
+    m.setdefault("breakdown", [])
+    existing_labels = {(x.get("type") or "").strip() for x in m["breakdown"] if isinstance(x, dict)}
+    for label, _ in wanted:
+        if label not in existing_labels:
+            m["breakdown"].append({"type": label, "value": 0})
+
+    m.setdefault("radar", {})
+    for _, key in wanted:
+        m["radar"].setdefault(key, 0)
+    return m
+
 def calculate_metrics(state: ESGAnalysisState) -> ESGAnalysisState:
+    """Compute metrics with rules/LLM hybrid or legacy, normalize schema, and guarantee 5-dim output."""
     if state.get("error"):
         return state
 
-    document_analysis = state.get("validations", "")
-    metrics_tool = ESGMetricsCalculatorTool()
+    # Select scoring mode: request param takes precedence, then environment variable.
+    mode = (state.get("rules_mode") or os.getenv("RULES_MODE", "legacy")).lower().strip()
+    tool = get_metrics_tool(mode=mode)
+    print(f"[METRICS] mode={mode} tool={type(tool).__name__}")
+
+    # Build the text to score (try to include as much meaningful content as possible).
+    parts = []
+    doc_analysis = state.get("document_analysis", "")
+    if isinstance(doc_analysis, list):
+        parts.extend([str(x) for x in doc_analysis if x])
+    elif isinstance(doc_analysis, str) and doc_analysis.strip():
+        parts.append(doc_analysis)
+
+    vals = state.get("validations", [])
+    if isinstance(vals, list):
+        for item in vals:
+            if isinstance(item, dict):
+                q = item.get("quotation", {})
+                if isinstance(q, dict):
+                    qt = q.get("quotation", "")
+                    ex = q.get("explanation", "")
+                    if qt:
+                        parts.append(str(qt))
+                    if ex:
+                        parts.append(str(ex))
+
+    combined_text = "\n".join(p for p in parts if isinstance(p, str)).strip()
+    if not combined_text:
+        combined_text = "No prior analysis content. Please score based on rules evidence only."
 
     try:
-        combined_text = f"Document Analysis: {document_analysis}"
-        result = metrics_tool._run(combined_text)
-        state["metrics"] = result
+        # Tool may return a JSON string or an already-parsed dict.
+        raw = tool._run(combined_text)
+        metrics = json.loads(raw) if isinstance(raw, str) else (raw or {})
+        # Normalize field names/scales and ensure 5-dim completeness.
+        metrics = _ensure_unified_metrics_schema(metrics)
+        metrics = _pad_five_dimensions(metrics)
+        state["metrics"] = metrics
         return state
     except Exception as e:
         state["error"] = f"Error calculating metrics: {str(e)}"
         return state
-    
-def clean_markdown_stars(text: str) -> str:
-    return re.sub(r"\*\*(.*?)\*\*", r"\1", text)
+
 
 def synthesize_final_report(state: ESGAnalysisState) -> ESGAnalysisState:
     if state.get("error"):
@@ -413,7 +492,6 @@ def synthesize_final_report(state: ESGAnalysisState) -> ESGAnalysisState:
     try:
         response = llm.invoke([HumanMessage(content=prompt)])
         state["final_synthesis"] = response.content
-        state["final_synthesis"] = clean_markdown_stars(state["final_synthesis"])
         return state
     except Exception as e:
         state["error"] = f"Error generating final report: {str(e)}"
@@ -481,7 +559,6 @@ def create_esg_analysis_graph():
 def create_esg_agent(session_id: str, vector_store: Chroma, company_name: str) -> AgentExecutor:
     """Create a ReAct agent for ESG analysis"""
     
-    print(f"[DEBUG] Starting agent creation for session {session_id}")
     from langchain.agents import initialize_agent
     from langchain.agents.agent_types import AgentType
     
@@ -503,20 +580,15 @@ def create_esg_agent(session_id: str, vector_store: Chroma, company_name: str) -
         )
     ]
     
-    # Create memory with summary and vector store
-    from langchain.memory import ConversationSummaryMemory
-    memory = ConversationSummaryMemory(
-        llm=llm,
+    # Create memory
+    memory = ConversationBufferWindowMemory(
         memory_key="chat_history",
+        k=10,
         return_messages=True
     )
     memories[session_id] = memory
     
-    # Add vector store as long-term memory
-    vector_store.as_retriever(search_kwargs={"k": 3})
-    
     # Initialize agent
-    print(f"[DEBUG] Initializing agent for session {session_id}")
     agent = initialize_agent(
         tools=tools,
         llm=llm,
@@ -526,38 +598,15 @@ def create_esg_agent(session_id: str, vector_store: Chroma, company_name: str) -
         max_iterations=15,
         early_stopping_method="force"
     )
-    print(f"[DEBUG] Agent initialized successfully for session {session_id}")
-    
-    # save session
-    print(f"[DEBUG] Saving session configuration for {session_id}")
-    from app.core.store import save_session
-    from app.db import get_db
-    db = next(get_db())
-    try:
-        session_data = {
-            "agent_config": {
-                "company_name": company_name,
-                "tools": [tool.name for tool in tools],
-                "vector_store_path": f"data/vector_stores/{session_id}",
-                "session_id": session_id
-            },
-            "vector_store_path": f"data/vector_stores/{session_id}",
-            "company_name": company_name
-        }
-        print(f"[DEBUG] Session data to save: {json.dumps(session_data, indent=2)}")
-        save_result = save_session(session_id, session_data, db)
-        print(f"[DEBUG] Session save result: {save_result}")
-    except Exception as e:
-        print(f"[ERROR] Failed to save session: {str(e)}")
-        raise
-    finally:
-        db.close()
-        print(f"[DEBUG] DB connection closed for session {session_id}")
     
     return agent
 
 # This function performs a comprehensive ESG analysis, first trying the LangGraph workflow, then falling back to agent-based analysis if workflow creation/execution fails
-async def comprehensive_esg_analysis(session_id: str, vector_store: Chroma, company_name: str, output_language: str = "en") -> Dict[str, Any]:
+async def comprehensive_esg_analysis(session_id: str, 
+                                     vector_store: Chroma, 
+                                     company_name: str, 
+                                     output_language: str = "en",
+                                     rules_mode: Optional[str] = None) -> Dict[str, Any]:
     """Execute comprehensive ESG analysis using LangGraph workflow"""
     
     # Create the analysis graph
@@ -568,7 +617,7 @@ async def comprehensive_esg_analysis(session_id: str, vector_store: Chroma, comp
         print(f"Error creating LangGraph workflow: {e}")
         # Fallback to agent-based analysis
         # If LangGraph workflow creation fails, immediately fall back to calling fallback_agent_analysis async function
-        return await fallback_agent_analysis(session_id, vector_store, company_name,output_language)
+        return await fallback_agent_analysis(session_id, vector_store, company_name,output_language, rules_mode=rules_mode)
     
     # Create agent for fallback
     agent = create_esg_agent(session_id, vector_store, company_name)
@@ -588,7 +637,8 @@ async def comprehensive_esg_analysis(session_id: str, vector_store: Chroma, comp
         iteration=0,
         max_iterations=3,
         error=None,
-        output_language=output_language
+        output_language=output_language,
+        rules_mode=rules_mode
     )
     
     try:
@@ -630,7 +680,7 @@ async def comprehensive_esg_analysis(session_id: str, vector_store: Chroma, comp
         print("Falling back to agent-based analysis...")
         return await fallback_agent_analysis(session_id, vector_store, company_name,output_language)
 
-async def fallback_agent_analysis(session_id: str, vector_store: Chroma, company_name: str, output_language: str = "en") -> Dict[str, Any]:
+async def fallback_agent_analysis(session_id: str, vector_store: Chroma, company_name: str, output_language: str = "en",rules_mode: Optional[str] = None) -> Dict[str, Any]:
     """Fallback to agent-based analysis if LangGraph fails"""
     
     agent = create_esg_agent(session_id, vector_store, company_name)
