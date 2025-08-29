@@ -5,10 +5,12 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "aiohttp>=3.12.15",
     "beautifulsoup4>=4.13.4",
     "chromadb>=1.0.20",
     "cloudscraper>=1.2.71",
     "fastapi>=0.116.1",
+    "google-genai>=1.32.0",
     "langchain>=0.3.27",
     "langchain-community>=0.3.27",
     "langchain-google-genai>=2.1.9",

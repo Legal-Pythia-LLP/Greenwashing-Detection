@@ -1,4 +1,6 @@
 fastapi
+aiohttp
+google-genai
 uvicorn
 langchain
 langchain-community
