@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 from .deep_research_engine import DeepSearchEngine, SearchResult
 from app.models.city_rankings import SustainabilityData
 from .deep_research_analyzer import UnifiedESGAnalyzer
+from .deep_research_prompt_manager import prompt_manager
 
 # Load environment variables
 load_dotenv()
@@ -38,7 +39,46 @@ class CityCompanyAnalyzer:
         self.esg_analyzer = UnifiedESGAnalyzer(self.api_key)
         self.discovered_companies = []  # Store for two-step process
     
-    async def find_companies_in_city_fast(self, city: str, top_n: int = 10) -> Tuple[List[Dict], str]:
+    def _get_ui_texts(self, language: str) -> Dict[str, str]:
+        """Get UI text translations for the discovery HTML"""
+        texts = {
+            "en": {
+                "found_title": "🔍 Companies Found in",
+                "found_text": "Found",
+                "companies_text": "companies in",
+                "company": "Company",
+                "industry": "Industry", 
+                "size": "Size",
+                "esg_data": "ESG Data",
+                "ready_title": "⏳ Ready to analyze these companies...",
+                "ready_text": "Analysis will begin shortly. Larger companies typically have more ESG data available."
+            },
+            "de": {
+                "found_title": "🔍 Unternehmen gefunden in",
+                "found_text": "Gefunden",
+                "companies_text": "Unternehmen in",
+                "company": "Unternehmen",
+                "industry": "Branche",
+                "size": "Größe", 
+                "esg_data": "ESG-Daten",
+                "ready_title": "⏳ Bereit zur Analyse dieser Unternehmen...",
+                "ready_text": "Analyse beginnt in Kürze. Größere Unternehmen haben typischerweise mehr ESG-Daten verfügbar."
+            },
+            "it": {
+                "found_title": "🔍 Aziende trovate in",
+                "found_text": "Trovate",
+                "companies_text": "aziende in",
+                "company": "Azienda",
+                "industry": "Settore",
+                "size": "Dimensione",
+                "esg_data": "Dati ESG", 
+                "ready_title": "⏳ Pronto ad analizzare queste aziende...",
+                "ready_text": "L'analisi inizierà a breve. Le aziende più grandi tipicamente hanno più dati ESG disponibili."
+            }
+        }
+        return texts.get(language, texts["en"])
+    
+    async def find_companies_in_city_fast(self, city: str, top_n: int = 10, language: str = "en") -> Tuple[List[Dict], str]:
         """FAST company discovery - focus on well-known companies"""
         
         # Prioritize well-known companies with simpler, faster queries
@@ -63,28 +103,10 @@ class CityCompanyAnalyzer:
                 all_content.append(result.content)
         
         # Faster, focused extraction
-        system_prompt = f"""Extract WELL-KNOWN companies from {city}.
-        
-        RULES:
-        1. Focus on LARGE, ESTABLISHED companies first
-        2. Must be headquartered or have major operations IN {city}
-        3. Prioritize companies with public ESG reports
-        4. Include company size/importance indicator
-        
-        Return JSON:
-        {{
-            "companies": [
-                {{
-                    "name": "Company Name",
-                    "size": "Large/Medium/Small",
-                    "industry": "Industry",
-                    "importance": "Major employer/Regional leader/Local business",
-                    "has_esg": "Likely/Unknown"
-                }}
-            ]
-        }}
-        
-        Return up to {top_n} companies, prioritizing larger companies."""
+        system_prompt = prompt_manager.get_city_discovery_prompt(language).format(
+            city=city, 
+            top_n=top_n
+        )
         
         try:
             messages = [
@@ -98,12 +120,15 @@ class CityCompanyAnalyzer:
                 data = json.loads(json_match.group())
                 companies_data = data.get("companies", [])[:top_n]
                 
-                # Create discovery HTML
+                # Get localized UI texts
+                ui_texts = self._get_ui_texts(language)
+                
+                # Create discovery HTML with localized text
                 discovery_html = f"""
                 <div style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); padding: 20px; border-radius: 15px; margin: 20px 0;">
-                    <h3 style="color: #1565c0; margin: 0 0 15px 0;">🔍 Companies Found in {city}</h3>
+                    <h3 style="color: #1565c0; margin: 0 0 15px 0;">{ui_texts['found_title']} {city}</h3>
                     <p style="color: #424242; margin: 10px 0;">
-                        Found <strong>{len(companies_data)}</strong> companies in {city}
+                        {ui_texts['found_text']} <strong>{len(companies_data)}</strong> {ui_texts['companies_text']} {city}
                     </p>
                     
                     <div style="background: white; padding: 15px; border-radius: 10px; margin: 15px 0;">
@@ -111,10 +136,10 @@ class CityCompanyAnalyzer:
                             <thead>
                                 <tr style="background: #e3f2fd;">
                                     <th style="padding: 10px; text-align: left; border-bottom: 2px solid #1976d2;">#</th>
-                                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #1976d2;">Company</th>
-                                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #1976d2;">Industry</th>
-                                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #1976d2;">Size</th>
-                                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #1976d2;">ESG Data</th>
+                                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #1976d2;">{ui_texts['company']}</th>
+                                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #1976d2;">{ui_texts['industry']}</th>
+                                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #1976d2;">{ui_texts['size']}</th>
+                                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #1976d2;">{ui_texts['esg_data']}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -142,17 +167,17 @@ class CityCompanyAnalyzer:
                         </tr>
                     """
                 
-                discovery_html += """
+                discovery_html += f"""
                             </tbody>
                         </table>
                     </div>
                     
                     <div style="background: #fff3e0; padding: 15px; border-radius: 10px; margin: 15px 0;">
                         <p style="color: #e65100; margin: 0; font-weight: bold;">
-                            ⏳ Ready to analyze these companies...
+                            {ui_texts['ready_title']}
                         </p>
                         <p style="color: #f57c00; margin: 5px 0; font-size: 14px;">
-                            Analysis will begin shortly. Larger companies typically have more ESG data available.
+                            {ui_texts['ready_text']}
                         </p>
                     </div>
                 </div>
@@ -169,7 +194,7 @@ class CityCompanyAnalyzer:
             logger.error(f"Error extracting companies: {str(e)}")
             return [], f"<div style='color: red;'>Error: {str(e)}</div>"
     
-    async def analyze_discovered_companies(self, companies_data: List[Dict], city: str, progress_callback=None) -> List[SustainabilityData]:
+    async def analyze_discovered_companies(self, companies_data: List[Dict], city: str, language: str = "en", progress_callback=None) -> List[SustainabilityData]:
         """Analyze previously discovered companies - FASTER with parallel processing"""
         
         results = []
@@ -190,7 +215,7 @@ class CityCompanyAnalyzer:
             batch_tasks = []
             for comp in batch:
                 company_name = comp.get("name", "Unknown")
-                batch_tasks.append(self.analyze_single_company_fast(company_name, city))
+                batch_tasks.append(self.analyze_single_company_fast(company_name, city, language))
             
             # Execute batch in parallel
             batch_results = await asyncio.gather(*batch_tasks, return_exceptions=True)
@@ -208,7 +233,7 @@ class CityCompanyAnalyzer:
         results.sort(key=lambda x: x.sustainability_score, reverse=True)
         return results
     
-    async def analyze_single_company_fast(self, company_name: str, city: str) -> SustainabilityData:
+    async def analyze_single_company_fast(self, company_name: str, city: str, language: str = "en") -> SustainabilityData:
         """Fast single company analysis with reduced searches"""
         try:
             # Simplified search - just 2 queries instead of 6
@@ -232,7 +257,7 @@ class CityCompanyAnalyzer:
             
             # Faster analysis with shorter content
             company_data = await self.esg_analyzer.analyze_with_explainable_ai(
-                company_name, content[:2], sources[:2], location=city  # Limit content for speed
+                company_name, content[:2], sources[:2], location=city, language=language  # Limit content for speed
             )
             
             return company_data

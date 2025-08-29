@@ -24,6 +24,7 @@ router = APIRouter()
 class CityAnalysisRequest(BaseModel):
     city: str = Field(..., description="City name to analyze companies in", example="San Francisco")
     top_n: int = Field(default=10, ge=3, le=20, description="Number of companies to analyze")
+    language: str = Field(default="en", pattern="^(en|de|it)$", description="Language for analysis output (en, de, it)")
 
 class CompanyDiscoveryResponse(BaseModel):
     companies: List[Dict[str, Any]]
@@ -81,7 +82,7 @@ async def discover_companies_in_city(request: CityAnalysisRequest):
         
         analyzer = CityCompanyAnalyzer()
         companies_data, discovery_html = await analyzer.find_companies_in_city_fast(
-            request.city, request.top_n
+            request.city, request.top_n, request.language
         )
         
         if not companies_data:
@@ -141,7 +142,7 @@ async def analyze_city_companies(request: CityAnalysisRequest, background_tasks:
         })
         
         companies_data, discovery_html = await analyzer.find_companies_in_city_fast(
-            request.city, request.top_n
+            request.city, request.top_n, request.language
         )
         
         if not companies_data:
@@ -166,7 +167,7 @@ async def analyze_city_companies(request: CityAnalysisRequest, background_tasks:
             })
         
         results = await analyzer.analyze_discovered_companies(
-            companies_data, request.city, update_progress
+            companies_data, request.city, request.language, update_progress
         )
         
         # Step 3: Format results

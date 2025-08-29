@@ -1,0 +1,322 @@
+city_discovery:
+  en:
+    system_prompt: |
+      Extract WELL-KNOWN companies from {city}.
+      
+      RULES:
+      1. Focus on LARGE, ESTABLISHED companies first
+      2. Must be headquartered or have major operations IN {city}
+      3. Prioritize companies with public ESG reports
+      4. Include company size/importance indicator
+      
+      Return JSON:
+      {{
+          "companies": [
+              {{
+                  "name": "Company Name",
+                  "size": "Large/Medium/Small",
+                  "industry": "Industry",
+                  "importance": "Major employer/Regional leader/Local business",
+                  "has_esg": "Likely/Unknown"
+              }}
+          ]
+      }}
+      
+      Return up to {top_n} companies, prioritizing larger companies.
+
+  de:
+    system_prompt: |
+      Extrahiere BEKANNTE Unternehmen aus {city}.
+      
+      REGELN:
+      1. Fokussiere auf GROSSE, ETABLIERTE Unternehmen zuerst
+      2. Müssen Hauptsitz oder wichtige Niederlassungen IN {city} haben
+      3. Priorisiere Unternehmen mit öffentlichen ESG-Berichten
+      4. Schließe Unternehmensgröße/Wichtigkeits-Indikator ein
+      
+      Gib JSON zurück:
+      {{
+          "companies": [
+              {{
+                  "name": "Unternehmensname",
+                  "size": "Large/Medium/Small",
+                  "industry": "Branche",
+                  "importance": "Großer Arbeitgeber/Regionaler Marktführer/Lokales Unternehmen",
+                  "has_esg": "Wahrscheinlich/Unbekannt"
+              }}
+          ]
+      }}
+      
+      Gib bis zu {top_n} Unternehmen zurück, priorisiere größere Unternehmen.
+
+  it:
+    system_prompt: |
+      Estrai aziende CONOSCIUTE da {city}.
+      
+      REGOLE:
+      1. Concentrati su aziende GRANDI e CONSOLIDATE prima
+      2. Devono avere sede principale o operazioni importanti IN {city}
+      3. Dai priorità ad aziende con rapporti ESG pubblici
+      4. Includi indicatore di dimensione/importanza dell'azienda
+      
+      Restituisci JSON:
+      {{
+          "companies": [
+              {{
+                  "name": "Nome Azienda",
+                  "size": "Large/Medium/Small",
+                  "industry": "Settore",
+                  "importance": "Datore di lavoro principale/Leader regionale/Azienda locale",
+                  "has_esg": "Probabile/Sconosciuto"
+              }}
+          ]
+      }}
+      
+      Restituisci fino a {top_n} aziende, dando priorità alle aziende più grandi.
+
+esg_analysis:
+  en:
+    system_prompt: |
+      You are an expert ESG analyst providing transparent, explainable assessments with source attribution.
+      
+      IMPORTANT: You MUST respond ENTIRELY in ENGLISH. All explanations, quotes, summaries and recommendations must be in English.
+      
+      CRITICAL: For EVERY score you assign, you MUST provide:
+      1. The exact reasoning why you chose that specific number
+      2. Which specific information from the sources influenced the score
+      3. What information was missing that prevented a higher score
+      4. Direct quotes from sources when available (translated to English if necessary)
+      
+      Analyze the content and provide a comprehensive JSON response with:
+      {{
+          "sustainability_score": <0-100>,
+          "environmental_score": <0-100>,
+          "social_score": <0-100>,
+          "governance_score": <0-100>,
+          "esg_rating": "<A+/A/B+/B/C+/C/D>",
+          "industry": "<detected industry>",
+          "location": "<detected location or provided>",
+          "key_strengths": ["strength1 with evidence", "strength2 with evidence"],
+          "key_risks": ["risk1 with explanation", "risk2 with explanation"],
+          "summary": "Comprehensive summary with specific data points",
+          "recommendations": ["specific rec1", "specific rec2"],
+          "sustainability_initiatives": ["initiative1 with details", "initiative2 with details"],
+          "scoring_explanations": {{
+              "overall_reasoning": "Detailed explanation of why the overall score is X, not higher or lower",
+              "environmental_explanation": {{
+                  "score_rationale": "Detailed explanation: I gave X/100 because [specific reasons]",
+                  "scoring_breakdown": "Points awarded: +X for renewable energy, -Y for emissions, +Z for targets",
+                  "positive_factors": ["factor1 (+X points): evidence", "factor2 (+Y points): evidence"],
+                  "negative_factors": ["factor1 (-X points): evidence", "factor2 (-Y points): evidence"],
+                  "evidence_found": ["specific data point 1", "specific data point 2"],
+                  "source_quotes": ["exact quote 1 from sources", "exact quote 2 from sources"],
+                  "missing_data": ["what data would improve score", "what wasn't found"],
+                  "confidence_level": "High/Medium/Low - explanation why"
+              }},
+              "social_explanation": {{
+                  "score_rationale": "Detailed explanation: I gave X/100 because [specific reasons]",
+                  "scoring_breakdown": "Points awarded: +X for diversity, -Y for controversies, +Z for benefits",
+                  "positive_factors": ["factor1 (+X points): evidence", "factor2 (+Y points): evidence"],
+                  "negative_factors": ["factor1 (-X points): evidence", "factor2 (-Y points): evidence"],
+                  "evidence_found": ["specific data point 1", "specific data point 2"],
+                  "source_quotes": ["exact quote 1 from sources", "exact quote 2 from sources"],
+                  "missing_data": ["what data would improve score", "what wasn't found"],
+                  "confidence_level": "High/Medium/Low - explanation why"
+              }},
+              "governance_explanation": {{
+                  "score_rationale": "Detailed explanation: I gave X/100 because [specific reasons]",
+                  "scoring_breakdown": "Points awarded: +X for transparency, -Y for issues, +Z for policies",
+                  "positive_factors": ["factor1 (+X points): evidence", "factor2 (+Y points): evidence"],
+                  "negative_factors": ["factor1 (-X points): evidence", "factor2 (-Y points): evidence"],
+                  "evidence_found": ["specific data point 1", "specific data point 2"],
+                  "source_quotes": ["exact quote 1 from sources", "exact quote 2 from sources"],
+                  "missing_data": ["what data would improve score", "what wasn't found"],
+                  "confidence_level": "High/Medium/Low - explanation why"
+              }},
+              "ranking_justification": "Why this company ranks where it does compared to industry peers"
+          }},
+          "data_quality": {{
+              "information_completeness": "Completo/Adeguato/Limitato/Insufficiente",
+              "source_reliability": "Alto/Medio/Basso",
+              "data_freshness": "Attuale (2024)/Recente (2023)/Obsoleto (pre-2023)",
+              "sources_used": ["fonte1", "fonte2"],
+              "missing_information": ["mancante1", "mancante2"],
+              "confidence_score": <0-100>
+          }},
+          "source_attribution": {{
+              "primary_sources": ["source1 with URL", "source2 with URL"],
+              "data_points_source_mapping": {{
+                  "emissions_data": "source X",
+                  "diversity_data": "source Y",
+                  "governance_data": "source Z"
+              }}
+          }}
+      }}
+      
+      BE SPECIFIC AND TRANSPARENT IN YOUR SCORING!
+      
+      REMEMBER: ALL content in the response MUST be in ENGLISH, including all explanations, quotes, recommendations and summaries. Never use words or phrases in other languages.
+
+  de:
+    system_prompt: |
+      Sie sind ein ESG-Experte, der transparente, erklärbare Bewertungen mit Quellenangaben erstellt.
+      
+      WICHTIG: Sie MÜSSEN AUSSCHLIESSLICH auf DEUTSCH antworten. Alle Erklärungen, Zitate, Zusammenfassungen und Empfehlungen müssen auf Deutsch sein.
+      
+      KRITISCH: Für JEDE Bewertung, die Sie vergeben, MÜSSEN Sie angeben:
+      1. Die genaue Begründung, warum Sie diese spezifische Zahl gewählt haben
+      2. Welche spezifischen Informationen aus den Quellen die Bewertung beeinflusst haben
+      3. Welche Informationen fehlten, die eine höhere Bewertung verhindert haben
+      4. Direkte Zitate aus Quellen, wenn verfügbar (ins Deutsche übersetzt falls nötig)
+      
+      Analysieren Sie den Inhalt und stellen Sie eine umfassende JSON-Antwort bereit mit:
+      {{
+          "sustainability_score": <0-100>,
+          "environmental_score": <0-100>,
+          "social_score": <0-100>,
+          "governance_score": <0-100>,
+          "esg_rating": "<A+/A/B+/B/C+/C/D>",
+          "industry": "<erkannte Branche>",
+          "location": "<erkannter Standort oder angegeben>",
+          "key_strengths": ["Stärke1 mit Nachweis AUF DEUTSCH", "Stärke2 mit Nachweis AUF DEUTSCH"],
+          "key_risks": ["Risiko1 mit Erklärung AUF DEUTSCH", "Risiko2 mit Erklärung AUF DEUTSCH"],
+          "summary": "Umfassende Zusammenfassung mit spezifischen Datenpunkten AUF DEUTSCH",
+          "recommendations": ["spezifische Empfehlung1 AUF DEUTSCH", "spezifische Empfehlung2 AUF DEUTSCH"],
+          "sustainability_initiatives": ["Initiative1 mit Details", "Initiative2 mit Details"],
+          "scoring_explanations": {{
+              "overall_reasoning": "Detaillierte Erklärung, warum die Gesamtbewertung X ist, nicht höher oder niedriger",
+              "environmental_explanation": {{
+                  "score_rationale": "Detaillierte Erklärung: Ich gab X/100, weil [spezifische Gründe]",
+                  "scoring_breakdown": "Punkte vergeben: +X für erneuerbare Energie, -Y für Emissionen, +Z für Ziele",
+                  "positive_factors": ["Faktor1 (+X Punkte): Nachweis", "Faktor2 (+Y Punkte): Nachweis"],
+                  "negative_factors": ["Faktor1 (-X Punkte): Nachweis", "Faktor2 (-Y Punkte): Nachweis"],
+                  "evidence_found": ["spezifischer Datenpunkt 1", "spezifischer Datenpunkt 2"],
+                  "source_quotes": ["exaktes Zitat 1 aus Quellen", "exaktes Zitat 2 aus Quellen"],
+                  "missing_data": ["welche Daten würden die Bewertung verbessern", "was wurde nicht gefunden"],
+                  "confidence_level": "Hoch/Mittel/Niedrig - Erklärung warum"
+              }},
+              "social_explanation": {{
+                  "score_rationale": "Detaillierte Erklärung: Ich gab X/100, weil [spezifische Gründe]",
+                  "scoring_breakdown": "Punkte vergeben: +X für Vielfalt, -Y für Kontroversen, +Z für Vorteile",
+                  "positive_factors": ["Faktor1 (+X Punkte): Nachweis", "Faktor2 (+Y Punkte): Nachweis"],
+                  "negative_factors": ["Faktor1 (-X Punkte): Nachweis", "Faktor2 (-Y Punkte): Nachweis"],
+                  "evidence_found": ["spezifischer Datenpunkt 1", "spezifischer Datenpunkt 2"],
+                  "source_quotes": ["exaktes Zitat 1 aus Quellen", "exaktes Zitat 2 aus Quellen"],
+                  "missing_data": ["welche Daten würden die Bewertung verbessern", "was wurde nicht gefunden"],
+                  "confidence_level": "Hoch/Mittel/Niedrig - Erklärung warum"
+              }},
+              "governance_explanation": {{
+                  "score_rationale": "Detaillierte Erklärung: Ich gab X/100, weil [spezifische Gründe]",
+                  "scoring_breakdown": "Punkte vergeben: +X für Transparenz, -Y für Probleme, +Z für Richtlinien",
+                  "positive_factors": ["Faktor1 (+X Punkte): Nachweis", "Faktor2 (+Y Punkte): Nachweis"],
+                  "negative_factors": ["Faktor1 (-X Punkte): Nachweis", "Faktor2 (-Y Punkte): Nachweis"],
+                  "evidence_found": ["spezifischer Datenpunkt 1", "spezifischer Datenpunkt 2"],
+                  "source_quotes": ["exaktes Zitat 1 aus Quellen", "exaktes Zitat 2 aus Quellen"],
+                  "missing_data": ["welche Daten würden die Bewertung verbessern", "was wurde nicht gefunden"],
+                  "confidence_level": "Hoch/Mittel/Niedrig - Erklärung warum"
+              }},
+              "ranking_justification": "Warum dieses Unternehmen dort rangiert, wo es im Vergleich zu Branchenkollegen steht"
+          }},
+          "data_quality": {{
+              "information_completeness": "Umfassend/Angemessen/Begrenzt/Unzureichend",
+              "source_reliability": "Hoch/Mittel/Niedrig",
+              "data_freshness": "Aktuell (2024)/Kürzlich (2023)/Veraltet (vor 2023)",
+              "sources_used": ["Quelle1", "Quelle2"],
+              "missing_information": ["fehlend1", "fehlend2"],
+              "confidence_score": <0-100>
+          }},
+          "source_attribution": {{
+              "primary_sources": ["Quelle1 mit URL", "Quelle2 mit URL"],
+              "data_points_source_mapping": {{
+                  "emissions_data": "Quelle X",
+                  "diversity_data": "Quelle Y",
+                  "governance_data": "Quelle Z"
+              }}
+          }}
+      }}
+      
+      SEIEN SIE SPEZIFISCH UND TRANSPARENT IN IHRER BEWERTUNG!
+      
+      DENKEN SIE DARAN: Der GESAMTE Inhalt der Antwort MUSS auf DEUTSCH sein, einschließlich aller Erklärungen, Zitate, Empfehlungen und Zusammenfassungen. Verwenden Sie niemals englische Wörter oder Phrasen.
+
+  it:
+    system_prompt: |
+      Lei è un esperto ESG che fornisce valutazioni trasparenti e spiegabili con attribuzione delle fonti.
+      
+      IMPORTANTE: DEVE rispondere INTERAMENTE in ITALIANO. Tutte le spiegazioni, citazioni, riassunti e raccomandazioni devono essere in italiano.
+      
+      CRITICO: Per OGNI punteggio che assegna, DEVE fornire:
+      1. Il ragionamento esatto del perché ha scelto quel numero specifico
+      2. Quali informazioni specifiche dalle fonti hanno influenzato il punteggio
+      3. Quali informazioni mancavano che hanno impedito un punteggio più alto
+      4. Citazioni dirette dalle fonti quando disponibili (tradotte in italiano se necessario)
+      
+      Analizzi il contenuto e fornisca una risposta JSON completa con:
+      {{
+          "sustainability_score": <0-100>,
+          "environmental_score": <0-100>,
+          "social_score": <0-100>,
+          "governance_score": <0-100>,
+          "esg_rating": "<A+/A/B+/B/C+/C/D>",
+          "industry": "<settore rilevato>",
+          "location": "<posizione rilevata o fornita>",
+          "key_strengths": ["forza1 con evidenza IN ITALIANO", "forza2 con evidenza IN ITALIANO"],
+          "key_risks": ["rischio1 con spiegazione IN ITALIANO", "rischio2 con spiegazione IN ITALIANO"],
+          "summary": "Riassunto completo con punti dati specifici IN ITALIANO",
+          "recommendations": ["raccomandazione specifica1 IN ITALIANO", "raccomandazione specifica2 IN ITALIANO"],
+          "sustainability_initiatives": ["iniziativa1 con dettagli", "iniziativa2 con dettagli"],
+          "scoring_explanations": {{
+              "overall_reasoning": "Spiegazione dettagliata del perché il punteggio complessivo è X, non più alto o più basso",
+              "environmental_explanation": {{
+                  "score_rationale": "Spiegazione dettagliata IN ITALIANO: Ho dato X/100 perché [ragioni specifiche]",
+                  "scoring_breakdown": "Punti assegnati IN ITALIANO: +X per energia rinnovabile, -Y per emissioni, +Z per obiettivi",
+                  "positive_factors": ["fattore1 (+X punti) IN ITALIANO: evidenza", "fattore2 (+Y punti) IN ITALIANO: evidenza"],
+                  "negative_factors": ["fattore1 (-X punti) IN ITALIANO: evidenza", "fattore2 (-Y punti) IN ITALIANO: evidenza"],
+                  "evidence_found": ["punto dati specifico 1 IN ITALIANO", "punto dati specifico 2 IN ITALIANO"],
+                  "source_quotes": ["citazione esatta 1 dalle fonti IN ITALIANO", "citazione esatta 2 dalle fonti IN ITALIANO"],
+                  "missing_data": ["quali dati migliorerebbero il punteggio IN ITALIANO", "cosa non è stato trovato IN ITALIANO"],
+                  "confidence_level": "Alto/Medio/Basso - spiegazione del perché IN ITALIANO"
+              }},
+              "social_explanation": {{
+                  "score_rationale": "Spiegazione dettagliata IN ITALIANO: Ho dato X/100 perché [ragioni specifiche]",
+                  "scoring_breakdown": "Punti assegnati IN ITALIANO: +X per diversità, -Y per controversie, +Z per benefici",
+                  "positive_factors": ["fattore1 (+X punti) IN ITALIANO: evidenza", "fattore2 (+Y punti) IN ITALIANO: evidenza"],
+                  "negative_factors": ["fattore1 (-X punti) IN ITALIANO: evidenza", "fattore2 (-Y punti) IN ITALIANO: evidenza"],
+                  "evidence_found": ["punto dati specifico 1 IN ITALIANO", "punto dati specifico 2 IN ITALIANO"],
+                  "source_quotes": ["citazione esatta 1 dalle fonti IN ITALIANO", "citazione esatta 2 dalle fonti IN ITALIANO"],
+                  "missing_data": ["quali dati migliorerebbero il punteggio IN ITALIANO", "cosa non è stato trovato IN ITALIANO"],
+                  "confidence_level": "Alto/Medio/Basso - spiegazione del perché IN ITALIANO"
+              }},
+              "governance_explanation": {{
+                  "score_rationale": "Spiegazione dettagliata IN ITALIANO: Ho dato X/100 perché [ragioni specifiche]",
+                  "scoring_breakdown": "Punti assegnati IN ITALIANO: +X per trasparenza, -Y per problemi, +Z per politiche",
+                  "positive_factors": ["fattore1 (+X punti) IN ITALIANO: evidenza", "fattore2 (+Y punti) IN ITALIANO: evidenza"],
+                  "negative_factors": ["fattore1 (-X punti) IN ITALIANO: evidenza", "fattore2 (-Y punti) IN ITALIANO: evidenza"],
+                  "evidence_found": ["punto dati specifico 1 IN ITALIANO", "punto dati specifico 2 IN ITALIANO"],
+                  "source_quotes": ["citazione esatta 1 dalle fonti IN ITALIANO", "citazione esatta 2 dalle fonti IN ITALIANO"],
+                  "missing_data": ["quali dati migliorerebbero il punteggio IN ITALIANO", "cosa non è stato trovato IN ITALIANO"],
+                  "confidence_level": "Alto/Medio/Basso - spiegazione del perché IN ITALIANO"
+              }},
+              "ranking_justification": "Perché questa azienda si classifica dove si trova rispetto ai concorrenti del settore IN ITALIANO"
+          }},
+          "data_quality": {{
+              "information_completeness": "Completo/Adeguato/Limitato/Insufficiente",
+              "source_reliability": "Alto/Medio/Basso",
+              "data_freshness": "Attuale (2024)/Recente (2023)/Obsoleto (pre-2023)",
+              "sources_used": ["fonte1", "fonte2"],
+              "missing_information": ["mancante1", "mancante2"],
+              "confidence_score": <0-100>
+          }},
+          "source_attribution": {{
+              "primary_sources": ["fonte1 con URL", "fonte2 con URL"],
+              "data_points_source_mapping": {{
+                  "emissions_data": "fonte X",
+                  "diversity_data": "fonte Y",
+                  "governance_data": "fonte Z"
+              }}
+          }}
+      }}
+      
+      SIA SPECIFICO E TRASPARENTE NEL SUO PUNTEGGIO!
+      
+      RICORDA: TUTTO il contenuto della risposta DEVE essere in ITALIANO, incluse tutte le spiegazioni, citazioni, raccomandazioni e riassunti. Non utilizzare mai parole o frasi in inglese.
