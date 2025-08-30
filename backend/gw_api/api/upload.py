@@ -5,9 +5,6 @@ import json
 from collections import defaultdict
 from gw_api.core.store import session_store, save_session
 from gw_api.core.esg_analysis import agent_executors
-
-# Global dictionary to store analysis results
-analysis_results_by_session = defaultdict(dict)
 from gw_api.core.utils import hash_file, translate_text
 from gw_api.core.document import process_pdf_document, process_ocr_text
 from gw_api.core.vector_store import embedding_model
@@ -37,6 +34,7 @@ IMAGE_UPLOAD_TYPES = {
     "image/bmp",
 }
 
+analysis_results_by_session = defaultdict(dict)
 
 def _get_main_risk_type(analysis_results: Dict[str, Any]) -> str:
     """Extract main risk type from analysis results"""

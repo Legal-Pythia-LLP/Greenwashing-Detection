@@ -31,6 +31,10 @@ COMPANIES_PATH = (
 VECTOR_STORE_DIR = (
     BASE_PATH / "data/vector_stores"
 )  # Directory for vector store persistence
+DB_PATH = BASE_PATH / "data/reports.db"  # SQLite database path
+COMPANIES_PATH = BASE_PATH / "data/raw/companies.csv"    # Company whitelist CSV file path
+WIKIRATE_COMPANIES_PATH = BASE_PATH / "data/raw/wikirate_companies_all.csv"    # Company whitelist CSV file path
+DOWNLOADS_PATH = BASE_PATH / "data/downloads"
 
 # Ensure directories exist
 REPORT_DIR.mkdir(parents=True, exist_ok=True)

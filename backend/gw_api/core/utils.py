@@ -2,9 +2,14 @@ import hashlib
 from typing import Any, List, Tuple
 from gw_api.core.llm import climatebert_tokenizer, climatebert_model, llm
 import re
+<<<<<<<< HEAD:backend/app/gw_api/core/utils.py
 from gw_api.webscraper.bbc_search import bbc_search
 
 # from gw_api.webscraper.cnn_search import cnn_search
+========
+from app.core.webscraper.bbc_search import bbc_search
+from app.core.webscraper.cnn_search import cnn_search
+>>>>>>>> origin/main:backend/app/core/utils.py
 from langchain_community.document_loaders import UnstructuredHTMLLoader
 from langchain.schema import HumanMessage
 

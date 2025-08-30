@@ -3,6 +3,7 @@ import re
 import hashlib
 from datetime import datetime, timedelta
 from typing import Dict
+from app.config import DOWNLOADS_PATH
 
 from bs4 import BeautifulSoup
 from selenium import webdriver
@@ -129,7 +130,7 @@ def cnn_search(name: str) -> Dict[str, str]:
         print(f"[DEBUG] Number of CNN articles crawled: {len(web_dictionary)}")
         for i, title in enumerate(web_dictionary.keys(), 1):
             print(f"  [CNN] {title}")
-        return url_download(web_dictionary)
+        return url_download(web_dictionary, DOWNLOADS_PATH)
     else:
         print("[DEBUG] No qualifying CNN articles found")
         return None

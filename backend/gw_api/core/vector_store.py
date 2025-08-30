@@ -1,18 +1,13 @@
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+<<<<<<<< HEAD:backend/app/gw_api/core/vector_store.py
 from gw_api.config import (
     GOOGLE_API_KEY,
 )
+========
+from app.config import GOOGLE_API_KEY
+>>>>>>>> origin/main:backend/app/core/vector_store.py
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
-
-# Updated embedding model initialization
-# embedding_model = AzureOpenAIEmbeddings(
-#     azure_endpoint=AZURE_OPENAI_ENDPOINT_2,
-#     api_key=AZURE_OPENAI_API_KEY_2,
-#     api_version="2023-05-15",
-#     azure_deployment="text-embedding-3-large",  # Changed from deployment_name
-#     chunk_size=100
-# )
 
 embedding_model = GoogleGenerativeAIEmbeddings(
     model="models/gemini-embedding-exp-03-07", google_api_key=GOOGLE_API_KEY

@@ -1,14 +1,3 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-
-
-venv/
-downloads/
-v2/node_modules/
-reports/
-tests/
-app/data
-
 # Created by https://www.toptal.com/developers/gitignore/api/terraform
 # Edit at https://www.toptal.com/developers/gitignore?templates=terraform
 
@@ -49,3 +38,4 @@ override.tf.json
 terraform.rc
 
 # End of https://www.toptal.com/developers/gitignore/api/terraform
+# Byte-compiled / optimized / DLL files
