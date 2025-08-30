@@ -39,16 +39,3 @@ terraform.rc
 
 # End of https://www.toptal.com/developers/gitignore/api/terraform
 # Byte-compiled / optimized / DLL files
-
-__pycache__/
-
-backend/.venv
-backend/tests/
-backend/data/vector_stores/
-backend/data/reports/
-backend/data/downloads/
-backend/data/reports.db
-
-venv/
-downloads/
-v2/node_modules/
