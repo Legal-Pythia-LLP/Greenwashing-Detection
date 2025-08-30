@@ -1,4 +1,6 @@
 fastapi
+aiohttp
+google-genai
 uvicorn
 langchain
 langchain-community
@@ -26,3 +28,4 @@ onnxruntime
 wordninja
 pyspellchecker
 Pillow
+PyYAML
