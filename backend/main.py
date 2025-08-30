@@ -7,6 +7,7 @@ from gw_api.api import (
     report_router,
     dashboard_router,
     language,
+    city_rankings_router
 )
 from gw_api.db import init_db
 
@@ -40,3 +41,4 @@ app.include_router(wikirate_router, prefix="/v2")
 app.include_router(report_router, prefix="/v2")
 app.include_router(dashboard_router, prefix="/v2")
 app.include_router(language.router, prefix="/v2")
+app.include_router(city_rankings_router, prefix="/v2", tags=["City Rankings"])

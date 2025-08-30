@@ -3,3 +3,4 @@ from .chat import router as chat_router
 from .wikirateAPItest import router as wikirate_router
 from .report import router as report_router
 from .dashboard import router as dashboard_router
+from .deep_research_city_rankings import router as city_rankings_router
