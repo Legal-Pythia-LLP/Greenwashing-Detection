@@ -31,4 +31,5 @@ dependencies = [
     "transformers>=4.55.2",
     "wikirate4py>=2.0.4",
     "wordninja>=2.0.0",
+    "unstructured>=0.18.14",
 ]
