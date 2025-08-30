@@ -1,7 +1,8 @@
-from .db import init_db, engine
-from .config import SQLALCHEMY_DATABASE_URL
-from .models.report import ReportFile, Report  # Explicit model imports
+from gw_api.db import init_db, engine
+from gw_api.config import SQLALCHEMY_DATABASE_URL
+from gw_api.models.report import ReportFile, Report  # Explicit model imports
 import sqlite3
+
 
 def migrate_db():
     """Check and automatically migrate database schema"""
@@ -9,7 +10,7 @@ def migrate_db():
         db_path = SQLALCHEMY_DATABASE_URL.replace("sqlite:///", "")
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        
+
         # Check if reports table has analysis_summary_i18n
         cursor.execute("PRAGMA table_info(reports)")
         columns = [col[1] for col in cursor.fetchall()]
@@ -25,6 +26,6 @@ def migrate_db():
 
 if __name__ == "__main__":
     print(f"Initializing database at {SQLALCHEMY_DATABASE_URL}")
-    init_db()      # Ensure tables exist
-    migrate_db()   # Auto migrate missing fields
+    init_db()  # Ensure tables exist
+    migrate_db()  # Auto migrate missing fields
     print("Database initialized successfully")

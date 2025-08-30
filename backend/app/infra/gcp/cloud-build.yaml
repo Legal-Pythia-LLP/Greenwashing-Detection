@@ -1,0 +1,14 @@
+steps:
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - "build"
+      - "--build-arg=VERSION=${_VERSION}"
+      - "--build-arg=VERSION_REVISION=${_VERSION_REVISION}"
+      - "--tag=europe-west2-docker.pkg.dev/legal-pythia-external/demos/green-washing-analysis/green-washing-analysis-api"
+      - "--file=./Dockerfile"
+      - "."
+    env:
+      - "DOCKER_BUILDKIT=1"
+
+images:
+  - "europe-west2-docker.pkg.dev/legal-pythia-external/demos/green-washing-analysis/green-washing-analysis-api"

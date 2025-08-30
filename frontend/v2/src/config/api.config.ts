@@ -1,8 +1,8 @@
 // API Configuration
 export const API_CONFIG = {
   // Use local backend in development environment
-  BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/v2',
-  
+  BASE_URL: 'https://api.gwa.demos.legalpythia.com/v2',
+
   // API Endpoints
   ENDPOINTS: {
     UPLOAD: '/upload',
@@ -11,10 +11,10 @@ export const API_CONFIG = {
     WIKIRATE: '/wikirate',
     DASHBOARD: '/dashboard',
   },
-  
+
   // Timeout setting
   TIMEOUT: 30000,
-  
+
   // Retry count
   RETRY_COUNT: 3,
 };
