@@ -3,12 +3,6 @@ from langchain_community.vectorstores import Chroma
 from langchain_community.document_loaders import UnstructuredHTMLLoader
 from langchain.schema import HumanMessage
 from typing import Any, Optional, Dict, List
-<<<<<<<< HEAD:backend/app/gw_api/core/tools.py
-from gw_api.core.llm import llm
-========
-from app.core.llm import llm
-from app.core.webscraper import bbc_search, cnn_search
->>>>>>>> origin/main:backend/app/core/tools.py
 import json
 import requests
 import cloudscraper
@@ -24,6 +18,8 @@ import time
 import csv
 import re
 import multiprocessing
+
+from .llm import llm
 
 
 # Name fuzzy matching

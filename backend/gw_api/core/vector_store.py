@@ -1,11 +1,7 @@
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-<<<<<<<< HEAD:backend/app/gw_api/core/vector_store.py
 from gw_api.config import (
     GOOGLE_API_KEY,
 )
-========
-from app.config import GOOGLE_API_KEY
->>>>>>>> origin/main:backend/app/core/vector_store.py
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 
