@@ -3,6 +3,7 @@
     "title": "Greenwashing-Erkennungssystem",
     "dashboard": "Dashboard",
     "upload": "Analyse Hochladen",
+    "riskByLocation": "Vergleich nach Standort",
     "newAnalysis": "Neue Analyse"
   },
   "dashboard": {

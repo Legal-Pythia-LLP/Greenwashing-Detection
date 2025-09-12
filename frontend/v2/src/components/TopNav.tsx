@@ -17,6 +17,14 @@ const TopNav = () => {
         <div className="flex items-center gap-3">
           <NavLink to="/" className={({ isActive }) => cn("px-3 py-2 rounded-md text-sm", isActive ? "bg-secondary" : "hover:bg-secondary")}>{t('nav.dashboard')}</NavLink>
           <NavLink to="/upload" className={({ isActive }) => cn("px-3 py-2 rounded-md text-sm", isActive ? "bg-secondary" : "hover:bg-secondary")}>{t('nav.upload')}</NavLink>
+          <NavLink
+              to="/risk-by-location"
+              className={({ isActive }) =>
+                cn("px-3 py-2 rounded-md text-sm", isActive ? "bg-secondary" : "hover:bg-secondary")
+              }
+            >
+              {t("nav.riskByLocation")}
+            </NavLink> 
           <Button asChild>
             <Link to="/upload">{t('nav.newAnalysis')}</Link>
           </Button>
