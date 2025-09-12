@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.callbacks.manager import CallbackManager
 from transformers import AutoModelForSequenceClassification, AutoTokenizer

@@ -29,3 +29,4 @@ wordninja
 pyspellchecker
 Pillow
 PyYAML
+google-genai>=0.6.0

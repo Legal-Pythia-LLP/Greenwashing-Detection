@@ -3,6 +3,7 @@
     "title": "Sistema di Rilevamento Greenwashing",
     "dashboard": "Dashboard",
     "upload": "Carica Analisi",
+    "riskByLocation": "Confronta per località",
     "newAnalysis": "Nuova Analisi"
   },
   "dashboard": {

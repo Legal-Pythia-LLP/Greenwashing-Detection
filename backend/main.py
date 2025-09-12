@@ -1,9 +1,13 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from gw_api.api import (
     upload_router,
     chat_router,
     wikirate_router,
+    city_router,
     report_router,
     dashboard_router,
     language,
@@ -41,4 +45,6 @@ app.include_router(wikirate_router, prefix="/v2")
 app.include_router(report_router, prefix="/v2")
 app.include_router(dashboard_router, prefix="/v2")
 app.include_router(language.router, prefix="/v2")
+app.include_router(city_rankings_router)
+
 app.include_router(city_rankings_router, prefix="/v2", tags=["City Rankings"])
